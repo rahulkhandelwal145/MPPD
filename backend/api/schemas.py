@@ -12,6 +12,7 @@ class MPSummary(BaseModel):
     party: str | None
     is_minister: bool
     is_speaker: bool
+    is_loa: bool
     age: int | None
     gender: str | None
     education: str | None
@@ -47,6 +48,7 @@ class MPDetail(BaseModel):
     party: str | None
     is_minister: bool
     is_speaker: bool
+    is_loa: bool
     age: int | None
     gender: str | None
     education: str | None

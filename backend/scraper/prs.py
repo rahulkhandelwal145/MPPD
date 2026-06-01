@@ -41,8 +41,10 @@ def parse_csv_download(csv_bytes: bytes) -> list[dict]:
     results = []
     for _, row in df.iterrows():
         note = str(row.get("mp_note") or "")
-        is_minister = "minister" in note.lower()
-        is_speaker = "speaker" in note.lower()
+        note_lower = note.lower()
+        is_minister = "minister" in note_lower
+        is_speaker = "speaker" in note_lower
+        is_loa = "leader of opposition" in note_lower
 
         # Attendance in the CSV is a 0–1 proportion; convert to 0–100 percentage
         attendance = _to_float(row.get("attendance"))
@@ -69,6 +71,7 @@ def parse_csv_download(csv_bytes: bytes) -> list[dict]:
                 "education": str(row["educational_qualification"]) if pd.notna(row.get("educational_qualification")) else None,
                 "is_minister": is_minister,
                 "is_speaker": is_speaker,
+                "is_loa": is_loa,
                 "attendance_pct": attendance,
                 "questions_count": _to_int(row.get("questions")),
                 "debates_count": _to_int(row.get("debates")),

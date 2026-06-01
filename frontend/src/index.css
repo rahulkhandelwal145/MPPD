@@ -17,3 +17,35 @@ html, body, #root {
 .text-muted {
   color: #64748b;
 }
+
+/* Chat answer HTML formatting */
+.chat-answer p { margin-bottom: 0.5rem; line-height: 1.6; }
+.chat-answer p:last-child { margin-bottom: 0; }
+
+.chat-answer table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+.chat-answer th {
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+.chat-answer td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+.chat-answer tr:last-child td { border-bottom: none; }
+.chat-answer tr:hover td { background: #f8fafc; }
+
+.chat-answer ul { padding-left: 1.2rem; margin-bottom: 0.5rem; }
+.chat-answer li { margin-bottom: 0.25rem; list-style-type: disc; }
+
+.chat-answer strong { font-weight: 600; color: #1e293b; }

@@ -21,6 +21,7 @@ async def _upsert_profile(session: AsyncSession, row: dict) -> int:
         "education": row.get("education"),
         "is_minister": row.get("is_minister", False),
         "is_speaker": row.get("is_speaker", False),
+        "is_loa": row.get("is_loa", False),
     }
     dialect_name = session.bind.dialect.name
 
@@ -36,6 +37,7 @@ async def _upsert_profile(session: AsyncSession, row: dict) -> int:
             education=stmt.inserted.education,
             is_minister=stmt.inserted.is_minister,
             is_speaker=stmt.inserted.is_speaker,
+            is_loa=stmt.inserted.is_loa,
             updated_at=datetime.utcnow(),
         )
         await session.execute(stmt)
@@ -53,6 +55,7 @@ async def _upsert_profile(session: AsyncSession, row: dict) -> int:
         "education": stmt.excluded.education,
         "is_minister": stmt.excluded.is_minister,
         "is_speaker": stmt.excluded.is_speaker,
+        "is_loa": stmt.excluded.is_loa,
         "updated_at": datetime.utcnow(),
     }
     stmt = stmt.on_conflict_do_update(index_elements=[MPProfile.prs_slug], set_=update_values).returning(MPProfile.id)

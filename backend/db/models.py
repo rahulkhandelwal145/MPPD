@@ -18,6 +18,7 @@ class MPProfile(Base):
     party: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_minister: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     is_speaker: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    is_loa: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(50), nullable=True)
     education: Mapped[str | None] = mapped_column(String(255), nullable=True)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import MPCard from "../components/MPCard";
 import SearchBar from "../components/SearchBar";
 import FilterBar from "../components/FilterBar";
@@ -8,12 +8,18 @@ import { fetchParties } from "../lib/api";
 
 export default function Home() {
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [party, setParty] = useState("");
   const [isMinister, setIsMinister] = useState("");
   const [sort, setSort] = useState("");
   const [direction, setDirection] = useState("desc");
   const [page, setPage] = useState(1);
   const [parties, setParties] = useState([]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedQuery(query); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
 
   useEffect(() => {
     fetchParties().then(setParties).catch(() => {});
@@ -26,20 +32,14 @@ export default function Home() {
   const { loading, data, error, summary } = useMPs({
     party: party || undefined,
     is_minister: isMinister === "" ? undefined : isMinister === "true",
+    search: debouncedQuery || undefined,
     sort: sort || undefined,
     direction,
     page,
     limit: 20,
   });
 
-  const mps = useMemo(() => {
-    return data?.results.filter((mp) => {
-      if (!query) {
-        return true;
-      }
-      return [mp.name, mp.constituency].some((value) => value?.toLowerCase().includes(query.toLowerCase()));
-    }) ?? [];
-  }, [data, query]);
+  const mps = data?.results ?? [];
 
   return (
     <div className="space-y-8">

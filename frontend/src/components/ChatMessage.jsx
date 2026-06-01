@@ -10,13 +10,22 @@ function LoadingDots() {
   );
 }
 
+function AiContent({ html }) {
+  return (
+    <div
+      className="chat-answer text-sm text-slate-800"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 export default function ChatMessage({ message, isLoading }) {
   const [sqlOpen, setSqlOpen] = useState(false);
 
   if (isLoading) {
     return (
       <div className="flex justify-start">
-        <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-sm">
+        <div className="max-w-[92%] rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-sm">
           <LoadingDots />
         </div>
       </div>
@@ -35,11 +44,11 @@ export default function ChatMessage({ message, isLoading }) {
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-white px-4 py-3 text-sm text-slate-800 shadow-sm">
-        {message.text}
+      <div className="w-full max-w-[92%] rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-sm">
+        <AiContent html={message.text} />
       </div>
       {message.sql && (
-        <div className="max-w-[85%]">
+        <div className="max-w-[92%]">
           <button
             onClick={() => setSqlOpen((o) => !o)}
             className="text-xs text-slate-400 hover:text-slate-600 pl-1"

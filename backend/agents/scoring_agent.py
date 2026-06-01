@@ -3,8 +3,8 @@ from datetime import datetime
 import pandas as pd
 
 
-def _to_peer_group(is_minister: bool, is_speaker: bool) -> str:
-    if is_minister or is_speaker:
+def _to_peer_group(is_minister: bool, is_speaker: bool, is_loa: bool = False) -> str:
+    if is_minister or is_speaker or is_loa:
         return "minister"
     return "non-minister"
 
@@ -31,7 +31,7 @@ async def run_scoring_agent(state: dict) -> dict:
     df["pmb_count"] = pd.to_numeric(df["pmb_count"], errors="coerce")
     df["mplads_utilization"] = df["slug"].map(mplads_data)
     df["peer_group"] = df.apply(
-        lambda row: _to_peer_group(bool(row.get("is_minister")), bool(row.get("is_speaker"))),
+        lambda row: _to_peer_group(bool(row.get("is_minister")), bool(row.get("is_speaker")), bool(row.get("is_loa"))),
         axis=1,
     )
 

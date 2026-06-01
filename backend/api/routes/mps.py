@@ -42,6 +42,7 @@ async def list_parties(session: AsyncSession = Depends(get_session)):
 async def list_mps(
     party: Optional[str] = Query(None),
     is_minister: Optional[bool] = Query(None),
+    search: Optional[str] = Query(None),
     sort: Optional[str] = Query(None, regex="^(attendance_score|questions_score|debates_score|pmb_score)$"),
     direction: str = Query("desc", regex="^(asc|desc)$"),
     page: int = Query(1, ge=1),
@@ -61,6 +62,11 @@ async def list_mps(
         query = query.where(MPProfile.party == party)
     if is_minister is not None:
         query = query.where(MPProfile.is_minister == is_minister)
+    if search:
+        term = f"%{search}%"
+        query = query.where(
+            MPProfile.name.ilike(term) | MPProfile.constituency.ilike(term)
+        )
     if sort:
         column = SORT_FIELDS[sort]
         query = query.order_by(column.desc() if direction == "desc" else column.asc())
@@ -85,6 +91,7 @@ async def list_mps(
                 party=profile.party,
                 is_minister=profile.is_minister,
                 is_speaker=profile.is_speaker,
+                is_loa=profile.is_loa,
                 age=profile.age,
                 gender=profile.gender,
                 education=profile.education,

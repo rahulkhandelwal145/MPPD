@@ -80,11 +80,17 @@ The user asked: "{question}"
 The SQL query returned these results:
 {results}
 
-Write a clear, concise answer in plain English.
-- If results are empty, say no MPs matched that criteria.
-- If comparing MPs, summarise each one.
-- If listing MPs, use a readable format.
+Write a response as clean HTML (no <html>/<body> tags, no inline styles, no CSS classes).
+Use these elements only:
+- <p> for short answers or summaries
+- <table><thead><tr><th>…</th></tr></thead><tbody><tr><td>…</td></tr></tbody></table> for lists or comparisons
+- <strong> for emphasis on names or numbers
+- <ul><li> only for very short bullet points
+
+Rules:
 - Do not mention SQL or databases.
 - Do not say "based on the data" — just answer directly.
-- Keep it under 100 words unless a longer answer is needed.
+- If results are empty, return <p>No MPs matched that criteria.</p>
+- Keep tables concise — show the most relevant columns only.
+- No markdown, no backticks, no extra explanation outside the HTML.
 """
