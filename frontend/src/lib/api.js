@@ -1,0 +1,16 @@
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: "/api/v1",
+  timeout: 10000,
+});
+
+export const fetchParties = () => api.get("/mps/parties").then((res) => res.data);
+export const fetchMPs = (params) => api.get("/mps", { params }).then((res) => res.data);
+export const fetchMP = (slug) => api.get(`/mps/${slug}`).then((res) => res.data);
+export const fetchLeaderboard = (params) => api.get("/mps/leaderboard", { params }).then((res) => res.data);
+export const fetchStatsSummary = () => api.get("/mps/stats/summary").then((res) => res.data);
+export const runPipeline = (payload) => api.post("/pipeline/run", payload).then((res) => res.data);
+export const fetchPipelineStatus = (run_id) => api.get(`/pipeline/status/${run_id}`).then((res) => res.data);
+
+export default api;
