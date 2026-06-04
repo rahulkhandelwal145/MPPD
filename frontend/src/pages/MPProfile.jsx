@@ -3,6 +3,7 @@ import ScoreBar from "../components/ScoreBar";
 import ScoreBadge from "../components/ScoreBadge";
 import PartyTag from "../components/PartyTag";
 import { getRole } from "../components/MPCard";
+import IntegritySection from "../components/IntegritySection";
 import useMP from "../hooks/useMP";
 
 const NA_NOTES = {
@@ -35,14 +36,27 @@ export default function MPProfile() {
 
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-950">{data.name}</h1>
-            <p className="mt-2 text-sm text-slate-600">{data.constituency}, {data.state}</p>
-            {role && (
-              <div className="mt-3">
-                <ScoreBadge label={role} />
+          <div className="flex items-start gap-5">
+            {data.image_url ? (
+              <img
+                src={data.image_url}
+                alt={data.name}
+                className="h-24 w-24 rounded-2xl object-cover flex-shrink-0 border border-slate-200 shadow-sm"
+              />
+            ) : (
+              <div className="h-24 w-24 rounded-2xl bg-slate-100 flex-shrink-0 flex items-center justify-center text-slate-400 text-3xl font-semibold border border-slate-200">
+                {data.name.charAt(0)}
               </div>
             )}
+            <div>
+              <h1 className="text-3xl font-semibold text-slate-950">{data.name}</h1>
+              <p className="mt-2 text-sm text-slate-600">{data.constituency}, {data.state}</p>
+              {role && (
+                <div className="mt-3">
+                  <ScoreBadge label={role} />
+                </div>
+              )}
+            </div>
           </div>
           <PartyTag party={data.party} />
         </div>
@@ -77,6 +91,8 @@ export default function MPProfile() {
             </div>
           </div>
         </div>
+
+        <IntegritySection slug={slug} />
 
         <p className="mt-4 text-sm text-slate-500">Data sourced from PRS Legislative Research.</p>
       </div>

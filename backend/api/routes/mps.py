@@ -6,17 +6,12 @@ from sqlalchemy import and_, case, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.schemas import MPSummary, MPDetail, StatsSummary
-from backend.db.models import MPProfile, MPScore, MPRawData, PipelineRun
+from backend.db.models import MPProfile, MPScore, MPRawData, MpAffidavit, PipelineRun
 from backend.db.session import get_session
 
 router = APIRouter(prefix="/mps", tags=["mps"])
 
-SORT_FIELDS = {
-    "attendance_score": MPScore.attendance_score,
-    "questions_score": MPScore.questions_score,
-    "debates_score": MPScore.debates_score,
-    "pmb_score": MPScore.pmb_score,
-}
+CROREPATI_THRESHOLD = 10_000_000  # ₹1 crore
 
 
 async def get_latest_scores(session: AsyncSession):
@@ -38,45 +33,110 @@ async def list_parties(session: AsyncSession = Depends(get_session)):
     return [row[0] for row in result.all()]
 
 
+@router.get("/states", response_model=list[str])
+async def list_states(session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(MPProfile.state)
+        .where(MPProfile.state.isnot(None), MPProfile.state != "")
+        .distinct()
+        .order_by(MPProfile.state)
+    )
+    return [row[0] for row in result.all()]
+
+
+def _affidavit_aggregate():
+    """One row per mp_id with integrity summary — joined into the list query so
+    we can both filter/sort by it and surface it on cards."""
+    return (
+        select(
+            MpAffidavit.mp_id.label("mp_id"),
+            func.max(MpAffidavit.total_criminal_cases).label("criminal_cases"),
+            func.max(MpAffidavit.total_convictions).label("convictions"),
+            func.max(MpAffidavit.total_assets).label("total_assets"),
+            func.max(case((MpAffidavit.has_serious_cases, 1), else_=0)).label("serious"),
+        )
+        .where(MpAffidavit.mp_id.isnot(None))
+        .group_by(MpAffidavit.mp_id)
+        .subquery()
+    )
+
+
 @router.get("", response_model=dict)
 async def list_mps(
     party: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
+    gender: Optional[str] = Query(None),
     is_minister: Optional[bool] = Query(None),
+    is_speaker: Optional[bool] = Query(None),
+    is_loa: Optional[bool] = Query(None),
+    has_criminal_cases: Optional[bool] = Query(None),
+    has_serious_cases: Optional[bool] = Query(None),
+    is_convicted: Optional[bool] = Query(None),
+    is_crorepati: Optional[bool] = Query(None),
     search: Optional[str] = Query(None),
-    sort: Optional[str] = Query(None, regex="^(attendance_score|questions_score|debates_score|pmb_score)$"),
+    sort: Optional[str] = Query(
+        None,
+        regex="^(attendance_score|questions_score|debates_score|pmb_score|total_assets|total_criminal_cases)$",
+    ),
     direction: str = Query("desc", regex="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_session),
 ):
     latest_scores = await get_latest_scores(session)
-    score_alias = MPScore.__table__.alias("scores")
+    aff = _affidavit_aggregate()
 
     query = (
-        select(MPProfile, MPScore)
+        select(MPProfile, MPScore, aff.c.criminal_cases, aff.c.convictions, aff.c.total_assets, aff.c.serious)
         .join(latest_scores, MPProfile.id == latest_scores.c.mp_id)
         .join(MPScore, and_(MPScore.mp_id == MPProfile.id, MPScore.scored_at == latest_scores.c.max_scored_at))
+        .outerjoin(aff, aff.c.mp_id == MPProfile.id)
     )
 
     if party is not None:
         query = query.where(MPProfile.party == party)
+    if state is not None:
+        query = query.where(MPProfile.state == state)
+    if gender is not None:
+        query = query.where(MPProfile.gender == gender)
     if is_minister is not None:
         query = query.where(MPProfile.is_minister == is_minister)
+    if is_speaker is not None:
+        query = query.where(MPProfile.is_speaker == is_speaker)
+    if is_loa is not None:
+        query = query.where(MPProfile.is_loa == is_loa)
+    # Integrity filters (against the joined affidavit aggregate)
+    if has_criminal_cases:
+        query = query.where(aff.c.criminal_cases > 0)
+    if has_serious_cases:
+        query = query.where(aff.c.serious == 1)
+    if is_convicted:
+        query = query.where(aff.c.convictions > 0)
+    if is_crorepati:
+        query = query.where(aff.c.total_assets >= CROREPATI_THRESHOLD)
     if search:
         term = f"%{search}%"
         query = query.where(
             MPProfile.name.ilike(term) | MPProfile.constituency.ilike(term)
         )
+
+    sort_columns = {
+        "attendance_score": MPScore.attendance_score,
+        "questions_score": MPScore.questions_score,
+        "debates_score": MPScore.debates_score,
+        "pmb_score": MPScore.pmb_score,
+        "total_assets": aff.c.total_assets,
+        "total_criminal_cases": aff.c.criminal_cases,
+    }
     if sort:
-        column = SORT_FIELDS[sort]
+        column = sort_columns[sort]
         query = query.order_by(column.desc() if direction == "desc" else column.asc())
     else:
         query = query.order_by(MPProfile.name.asc())
 
     total = await session.scalar(select(func.count()).select_from(query.subquery()))
     query = query.offset((page - 1) * limit).limit(limit)
-    result = await session.execute(query)
-    rows = result.all()
+    rows = (await session.execute(query)).all()
 
     return {
         "total": total or 0,
@@ -95,14 +155,20 @@ async def list_mps(
                 age=profile.age,
                 gender=profile.gender,
                 education=profile.education,
+                terms=profile.terms,
+                image_url=profile.image_url,
                 attendance_score=score.attendance_score,
                 questions_score=score.questions_score,
                 debates_score=score.debates_score,
                 pmb_score=score.pmb_score,
                 peer_group=score.peer_group,
                 total_peers=score.total_peers,
+                criminal_cases=criminal_cases,
+                convictions=convictions,
+                total_assets=total_assets,
+                has_serious_cases=bool(serious) if serious is not None else None,
             )
-            for profile, score in rows
+            for profile, score, criminal_cases, convictions, total_assets, serious in rows
         ],
     }
 
@@ -142,9 +208,12 @@ async def leaderboard(
             party=profile.party,
             is_minister=profile.is_minister,
             is_speaker=profile.is_speaker,
+            is_loa=profile.is_loa,
             age=profile.age,
             gender=profile.gender,
             education=profile.education,
+            terms=profile.terms,
+            image_url=profile.image_url,
             attendance_score=score.attendance_score,
             questions_score=score.questions_score,
             debates_score=score.debates_score,
@@ -218,9 +287,12 @@ async def get_mp(slug: str, session: AsyncSession = Depends(get_session)):
         party=profile.party,
         is_minister=profile.is_minister,
         is_speaker=profile.is_speaker,
+        is_loa=profile.is_loa,
         age=profile.age,
         gender=profile.gender,
         education=profile.education,
+        terms=profile.terms,
+        image_url=profile.image_url,
         raw={
             "attendance_pct": raw.attendance_pct,
             "questions_count": raw.questions_count,

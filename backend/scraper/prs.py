@@ -4,6 +4,15 @@ import unicodedata
 
 import pandas as pd
 
+_IMAGE_RE = re.compile(rb'/files/mptrack/18-lok-sabha/profile_image/\d+\.jpg')
+
+
+def parse_image_url(html_bytes: bytes) -> str | None:
+    match = _IMAGE_RE.search(html_bytes)
+    if match:
+        return "https://prsindia.org" + match.group(0).decode()
+    return None
+
 
 def _slugify(name: str) -> str:
     normalized = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
@@ -32,6 +41,24 @@ def _to_int(val) -> int | None:
         return int(val)
     except (TypeError, ValueError):
         return None
+
+
+_TERM_WORDS = {
+    "first": 1, "second": 2, "third": 3, "fourth": 4,
+    "fifth": 5, "sixth": 6, "seventh": 7, "eighth": 8,
+}
+
+
+def _parse_terms(val) -> int | None:
+    if not val:
+        return None
+    try:
+        if pd.isna(val):
+            return None
+    except (TypeError, ValueError):
+        pass
+    first_word = str(val).strip().lower().split()[0]
+    return _TERM_WORDS.get(first_word)
 
 
 def parse_csv_download(csv_bytes: bytes) -> list[dict]:
@@ -69,6 +96,7 @@ def parse_csv_download(csv_bytes: bytes) -> list[dict]:
                 "age": _to_int(row.get("mp_age")),
                 "gender": str(row["mp_gender"]) if pd.notna(row.get("mp_gender")) else None,
                 "education": str(row["educational_qualification"]) if pd.notna(row.get("educational_qualification")) else None,
+                "terms": _parse_terms(row.get("term")),
                 "is_minister": is_minister,
                 "is_speaker": is_speaker,
                 "is_loa": is_loa,

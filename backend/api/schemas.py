@@ -16,12 +16,19 @@ class MPSummary(BaseModel):
     age: int | None
     gender: str | None
     education: str | None
+    terms: int | None
+    image_url: str | None
     attendance_score: float | None
     questions_score: float | None
     debates_score: float | None
     pmb_score: float | None
     peer_group: str
     total_peers: int
+    # Integrity summary (null when the MP has no scraped affidavit)
+    criminal_cases: int | None = None
+    convictions: int | None = None
+    total_assets: int | None = None
+    has_serious_cases: bool | None = None
 
 
 class MPRawData(BaseModel):
@@ -52,6 +59,8 @@ class MPDetail(BaseModel):
     age: int | None
     gender: str | None
     education: str | None
+    terms: int | None
+    image_url: str | None
     raw: MPRawData
     scores: dict[str, float | None]
     ranks: dict[str, int | None]

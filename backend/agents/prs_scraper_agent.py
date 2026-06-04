@@ -5,7 +5,7 @@ import httpx
 from loguru import logger
 
 from backend.core.config import settings
-from backend.scraper.prs import parse_csv_download
+from backend.scraper.prs import parse_csv_download, parse_image_url
 
 DOWNLOAD_URL = (
     "https://prsindia.org/mptrack/download"
@@ -38,6 +38,18 @@ async def run_prs_scraper(run_id: int, force_refresh: bool = False) -> dict:
     raw_mp_data = parse_csv_download(csv_bytes)
     slugs = [row["slug"] for row in raw_mp_data]
     logger.info("Parsed {} MP records from PRS download", len(raw_mp_data))
+
+    html_cache_dir = Path(settings.scraper_cache_dir)
+    images_found = 0
+    for row in raw_mp_data:
+        html_path = html_cache_dir / f"{row['slug']}.html"
+        if html_path.exists():
+            row["image_url"] = parse_image_url(html_path.read_bytes())
+            if row["image_url"]:
+                images_found += 1
+        else:
+            row["image_url"] = None
+    logger.info("Extracted image URLs for {}/{} MPs from HTML cache", images_found, len(raw_mp_data))
 
     return {
         "mp_slugs": slugs,

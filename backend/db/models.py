@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, text
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -22,6 +22,8 @@ class MPProfile(Base):
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(50), nullable=True)
     education: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    terms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     lok_sabha_term: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("18"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), server_default=text("NOW()"))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), server_default=text("NOW()"), onupdate=datetime.utcnow)
@@ -83,3 +85,62 @@ class PipelineRun(Base):
     errors: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), server_default=text("NOW()"))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+
+
+class MpAffidavit(Base):
+    __tablename__ = "mp_affidavits"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mp_id: Mapped[int | None] = mapped_column(ForeignKey("mp_profiles.id"), nullable=True)
+    myneta_candidate_id: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
+    candidate_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    constituency: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    party: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    match_confidence: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    best_match_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    best_match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    total_criminal_cases: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    total_convictions: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    convictions_serious: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    has_serious_cases: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    has_conviction: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+
+    total_assets: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    movable_assets: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    immovable_assets: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    total_liabilities: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    self_income: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    spouse_income: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    education: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    extraction_success: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), server_default=text("NOW()"))
+
+    criminal_cases: Mapped[list["MpCriminalCase"]] = relationship("MpCriminalCase", back_populates="affidavit")
+    asset_history: Mapped[list["MpAssetHistory"]] = relationship("MpAssetHistory", back_populates="affidavit")
+
+
+class MpCriminalCase(Base):
+    __tablename__ = "mp_criminal_cases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    affidavit_id: Mapped[int] = mapped_column(ForeignKey("mp_affidavits.id"), nullable=False)
+    ipc_section: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_serious: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    is_conviction: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+
+    affidavit: Mapped["MpAffidavit"] = relationship("MpAffidavit", back_populates="criminal_cases")
+
+
+class MpAssetHistory(Base):
+    __tablename__ = "mp_asset_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    affidavit_id: Mapped[int] = mapped_column(ForeignKey("mp_affidavits.id"), nullable=False)
+    election_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    declared_assets: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    affidavit: Mapped["MpAffidavit"] = relationship("MpAffidavit", back_populates="asset_history")

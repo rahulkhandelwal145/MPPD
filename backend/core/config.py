@@ -10,7 +10,12 @@ class Settings(BaseSettings):
     scraper_user_agent: str = "MPScorer-Civic-Research/1.0"
     debug: bool = False
     anthropic_api_key: str | None = None
+    # LLM extraction provider: "groq" (cloud, token-capped) or "ollama" (local).
+    llm_provider: str = "groq"
     groq_api_key: str | None = None
+    groq_model: str = "llama-3.1-8b-instant"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5-coder:7b"
 
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).resolve().parent.parent / ".env"),

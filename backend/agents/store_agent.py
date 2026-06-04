@@ -19,9 +19,11 @@ async def _upsert_profile(session: AsyncSession, row: dict) -> int:
         "age": row.get("age"),
         "gender": row.get("gender"),
         "education": row.get("education"),
+        "terms": row.get("terms"),
         "is_minister": row.get("is_minister", False),
         "is_speaker": row.get("is_speaker", False),
         "is_loa": row.get("is_loa", False),
+        "image_url": row.get("image_url"),
     }
     dialect_name = session.bind.dialect.name
 
@@ -35,9 +37,11 @@ async def _upsert_profile(session: AsyncSession, row: dict) -> int:
             age=stmt.inserted.age,
             gender=stmt.inserted.gender,
             education=stmt.inserted.education,
+            terms=stmt.inserted.terms,
             is_minister=stmt.inserted.is_minister,
             is_speaker=stmt.inserted.is_speaker,
             is_loa=stmt.inserted.is_loa,
+            image_url=stmt.inserted.image_url,
             updated_at=datetime.utcnow(),
         )
         await session.execute(stmt)
@@ -53,9 +57,11 @@ async def _upsert_profile(session: AsyncSession, row: dict) -> int:
         "age": stmt.excluded.age,
         "gender": stmt.excluded.gender,
         "education": stmt.excluded.education,
+        "terms": stmt.excluded.terms,
         "is_minister": stmt.excluded.is_minister,
         "is_speaker": stmt.excluded.is_speaker,
         "is_loa": stmt.excluded.is_loa,
+        "image_url": stmt.excluded.image_url,
         "updated_at": datetime.utcnow(),
     }
     stmt = stmt.on_conflict_do_update(index_elements=[MPProfile.prs_slug], set_=update_values).returning(MPProfile.id)

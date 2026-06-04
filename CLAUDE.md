@@ -17,8 +17,9 @@ cd frontend && npm run dev       # dev server on port 5173
 cd frontend && npm run build
 
 # Database migrations (must run from backend/ directory, not project root)
-cd backend && python -m alembic upgrade head
-cd backend && python -m alembic revision --autogenerate -m "description"
+# WARNING: there are two Alembic heads — always specify the revision explicitly, never use "head"
+cd backend && python -m alembic upgrade 0005
+cd backend && python -m alembic revision -m "description"
 
 # Quick smoke tests
 curl http://localhost:8000/api/v1/health
@@ -34,7 +35,7 @@ curl -X POST http://localhost:8000/api/v1/pipeline/run -H "Content-Type: applica
 
 `POST /pipeline/run` fires an async background job. The orchestrator in `backend/agents/orchestrator.py` runs four agents in sequence, passing a shared `state` dict between them:
 
-1. **prs_scraper_agent** — Fetches each MP's page from `prsindia.org/mptrack/18th-lok-sabha/{slug}`. Caches raw HTML in `data/cache/{slug}.html`. Parsing uses BeautifulSoup CSS selectors on structured divs (`.attendance`, `.debate`, `.questions`, `.pmb`) — each metric block has exactly three `div.field-item.even` in order: Selected MP value → National Average → State Average.
+1. **prs_scraper_agent** — Downloads the 18th LS CSV from `prsindia.org/mptrack/download`. Parses it with pandas (`parse_csv_download`). Also reads `data/cache/{slug}.html` for each MP (pre-fetched HTML pages) to extract the profile image URL via regex on `/files/mptrack/18-lok-sabha/profile_image/{id}.jpg`.
 
 2. **mplads_agent** — Fetches MPLADS constituency fund utilization from data.gov.in API (requires `DATAGOV_API_KEY`). Matches MP names via fuzzy string matching (rapidfuzz). Gracefully skips if key is absent.
 
@@ -44,19 +45,50 @@ curl -X POST http://localhost:8000/api/v1/pipeline/run -H "Content-Type: applica
 
 ### Database
 
-MySQL only (driver: `asyncmy`). Four tables:
-- `mp_profiles` — one row per MP, identity and biographical fields including `education`, `age`, `gender`
+MySQL only (driver: `asyncmy`). Seven tables:
+- `mp_profiles` — one row per MP; fields include `education`, `age`, `gender`, `terms`, `is_minister`, `is_speaker`, `is_loa`, `image_url`
 - `mp_raw_data` — append-only scrape results per pipeline run; includes national/state averages per metric
 - `mp_scores` — append-only peer-normalized scores per pipeline run
-- `pipeline_runs` — job tracking
+- `pipeline_runs` — job tracking (shared between Phase 1 and Phase 2 pipelines)
+- `mp_affidavits` — one row per MyNeta winner; upsert key is `myneta_candidate_id`
+- `mp_criminal_cases` — one row per criminal case per MP; FK → `mp_affidavits.id`
+- `mp_asset_history` — prior-election asset declarations; FK → `mp_affidavits.id`
+
+Phase 2 tables are **not managed by Alembic** — they are created automatically via `Base.metadata.create_all()` on app startup. Do not write Alembic migrations for them.
 
 Migration files live in `backend/db/migrations/versions/`. Alembic config is `backend/alembic.ini`; the `script_location` is relative so alembic must be invoked from `backend/`.
 
-### API Routes
+### Phase 2 — MyNeta Integrity Pipeline
+
+`run_integrity_scrape.bat` (or `asyncio.run(run())` directly) runs a standalone pipeline:
+
+1. **scraper/myneta.py** — fetches winners index (485 elected MPs from MyNeta), then fetches each candidate page. Caches raw HTML to `data/cache/myneta/{id}.html`.
+2. **agents/extraction_agent.py** — sends cleaned page text to Groq (`llama-3.1-8b-instant`, temp=0) and validates the JSON response against `AffidavitExtraction` Pydantic schema. Retries up to 3 times; sleeps on 429 rate-limit errors using the retry-after from the error message.
+3. **agents/myneta_pipeline.py** — orchestrates the full run: fetch → extract → rapidfuzz name-match against `mp_profiles` → upsert to `mp_affidavits`. Writes unmatched names to `data/unmatched_candidates.log`.
+
+**Groq free-tier limits:** 6,000 TPM and 500,000 TPD. Each extraction uses ~4,000–5,000 tokens. The daily cap allows ~100 extractions before hitting the limit. Re-running after midnight UTC resumes from where it left off (upsert skips already-successful rows is NOT automatic — all rows are re-extracted on re-run unless you filter by `extraction_success=True` manually).
+
+**Matching:** rapidfuzz `token_sort_ratio` ≥85 → `high`, 70–84 → `low`, <70 → `none`. Low/none cases logged to `data/unmatched_candidates.log` and retrievable via `GET /api/v1/integrity/unmatched`.
+
+### Phase 2 API Routes
+
+All under `/api/v1/integrity`. **Route ordering is critical** — `/summary`, `/unmatched`, `/scrape`, `/scrape/status/{run_id}` must all be declared before `/{slug}`.
+
+- `GET /integrity/{slug}` — full integrity data for one MP (criminal cases, assets, history, disclaimer)
+- `GET /integrity/summary` — aggregate stats across all MPs
+- `POST /integrity/scrape` — triggers pipeline as FastAPI BackgroundTask
+- `GET /integrity/scrape/status/{run_id}` — poll pipeline progress
+- `GET /integrity/unmatched` — MPs where name match was low-confidence or failed
+
+Every response that includes criminal or asset data must include the `disclaimer` field (ADR/myneta.info attribution).
+
+### API Routes (Phase 1)
 
 All routes under `/api/v1`. **Route ordering in `mps.py` is critical**: `/leaderboard` and `/stats/summary` must be declared before `/{slug}` or FastAPI will match them as slug values.
 
 Scores are joined via a `MAX(scored_at)` subquery so the API always returns the most recent pipeline run's scores.
+
+`GET /mps` accepts: `party`, `is_minister`, `is_speaker`, `is_loa` (all optional bool), `search`, `sort`, `direction`, `page`, `limit`.
 
 ### Frontend
 
@@ -66,6 +98,10 @@ React 18 + Vite + Tailwind. All API calls go through `frontend/src/lib/api.js`. 
 
 - All DB queries use async SQLAlchemy: `await session.execute(select(...))` — never `session.query()`
 - Session is always injected via `Depends(get_session)` — never instantiated manually in routes
-- `store_agent.py` detects MySQL vs PostgreSQL at runtime for upsert dialect (`on_duplicate_key_update` vs `on_conflict_do_update`)
-- HTML cache (`data/cache/`) is checked before fetching; pass `force_refresh=True` to bypass it
-- The scraper index parser (`parse_index`) uses anchor tag scanning and is separate from the per-MP parser (`parse_mp_page`)
+- `store_agent.py` detects MySQL vs PostgreSQL at runtime for upsert dialect (`on_duplicate_key_update` vs `on_conflict_do_update`); `myneta_pipeline.py` uses the same pattern
+- HTML cache (`data/cache/`) holds 544 pre-fetched MP pages used only for image URL extraction; pass `force_refresh=True` to re-download the CSV
+- MyNeta HTML cache lives in `data/cache/myneta/` (separate from PRS cache); both dirs are covered by `data/` in `.gitignore`
+- **Alembic has two heads** (`0002` orphan + `0005`): never run `alembic upgrade head` — always specify the revision, e.g. `alembic upgrade 0005`
+- Phase 2 tables (`mp_affidavits`, `mp_criminal_cases`, `mp_asset_history`) are NOT in Alembic — created by `Base.metadata.create_all()` on startup
+- If an MP's PRS slug changes between pipeline runs, a duplicate `mp_profiles` row is created (upsert key is `prs_slug`); delete the stale row manually
+- `mp_affidavits` upsert key is `myneta_candidate_id`; re-running the pipeline overwrites all fields including `extraction_success`
