@@ -3,7 +3,7 @@ function Select({ label, value, onChange, children }) {
     <div>
       <label className="block text-sm font-medium text-slate-700">{label}</label>
       <select
-        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
+        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-soft outline-none transition hover:border-slate-300 focus:border-brand-400 focus:ring-4 focus:ring-brand-100"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -40,7 +40,7 @@ export default function FilterBar({
   onClear,
 }) {
   return (
-    <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="space-y-4 rounded-4xl border border-slate-200/70 bg-white p-5 shadow-soft">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Select label="Party" value={party} onChange={onPartyChange}>
           <option value="">All parties</option>

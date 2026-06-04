@@ -24,7 +24,7 @@ export default function ChatPanel() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-indigo-700 transition-colors"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-brand-gradient px-5 py-3.5 text-sm font-semibold text-white shadow-lift transition-transform hover:scale-105"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
             <path fillRule="evenodd" d="M10 2c-2.236 0-4.43.18-6.57.524C1.993 2.755 1 4.014 1 5.426v5.148c0 1.413.993 2.67 2.43 2.902.848.137 1.705.248 2.57.331v3.443a.75.75 0 0 0 1.28.53l3.58-3.579a.78.78 0 0 1 .527-.224 41.202 41.202 0 0 0 5.183-.5c1.437-.232 2.43-1.49 2.43-2.903V5.426c0-1.413-.993-2.67-2.43-2.902A41.289 41.289 0 0 0 10 2Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM8 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm5 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
@@ -35,13 +35,16 @@ export default function ChatPanel() {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-0 right-0 z-50 flex flex-col sm:bottom-6 sm:right-6 w-full sm:w-[380px] h-[70vh] sm:h-[520px] rounded-none sm:rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
+        <div className="fixed bottom-0 right-0 z-50 flex flex-col sm:bottom-6 sm:right-6 w-full sm:w-[380px] h-[70vh] sm:h-[520px] rounded-none sm:rounded-4xl overflow-hidden shadow-lift border border-slate-200/70 bg-white">
           {/* Header */}
-          <div className="flex items-center justify-between bg-slate-950 px-4 py-3 text-white">
-            <span className="text-sm font-semibold">Ask about MPs</span>
+          <div className="flex items-center justify-between bg-brand-gradient px-4 py-3.5 text-white">
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/20">✦</span>
+              Ask about MPs
+            </span>
             <button
               onClick={() => setOpen(false)}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-white/70 transition-colors hover:text-white"
               aria-label="Close chat"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">

@@ -12,23 +12,35 @@ function InfoIcon({ note }) {
   );
 }
 
+// Performance tier → gradient fill + value colour. Low is rose, mid amber, high emerald.
+function tone(value) {
+  if (typeof value !== "number") return { fill: "bg-slate-300", text: "text-slate-400" };
+  if (value >= 67) return { fill: "bg-gradient-to-r from-emerald-400 to-emerald-600", text: "text-emerald-600" };
+  if (value >= 34) return { fill: "bg-gradient-to-r from-amber-400 to-amber-500", text: "text-amber-600" };
+  return { fill: "bg-gradient-to-r from-rose-400 to-rose-500", text: "text-rose-600" };
+}
+
 export default function ScoreBar({ label, value, note }) {
   const score = typeof value === "number" ? value : 0;
   const percentage = Math.min(Math.max(score, 0), 100);
-  const display = typeof value === "number" ? `${value.toFixed(1)} / 100` : "— / 100";
+  const display = typeof value === "number" ? value.toFixed(1) : "—";
+  const t = tone(value);
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm font-medium text-slate-700">
+      <div className="flex items-center justify-between text-sm font-medium text-slate-600">
         <span className="flex items-center">
           {label}
           {note && <InfoIcon note={note} />}
         </span>
-        <span className="text-slate-900">{display}</span>
+        <span className="tabular-nums">
+          <span className={`font-bold ${t.text}`}>{display}</span>
+          <span className="text-slate-300"> / 100</span>
+        </span>
       </div>
-      <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
         <div
-          className={`h-full rounded-full ${typeof value === "number" ? "bg-indigo-600" : "bg-slate-300"}`}
+          className={`h-full rounded-full transition-[width] duration-700 ease-out ${t.fill}`}
           style={{ width: `${percentage}%` }}
         />
       </div>

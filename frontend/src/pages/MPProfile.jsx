@@ -18,83 +18,87 @@ export default function MPProfile() {
   const { loading, data, error } = useMP(slug);
 
   if (loading) {
-    return <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">Loading profile…</div>;
+    return (
+      <div className="space-y-6">
+        <div className="skeleton h-48 rounded-4xl" />
+        <div className="skeleton h-64 rounded-4xl" />
+      </div>
+    );
   }
 
   if (error || !data) {
-    return <div className="rounded-3xl border border-red-200 bg-red-50 p-8 shadow-sm">MP profile not found.</div>;
+    return <div className="rounded-4xl border border-red-200 bg-red-50 p-8 text-red-700 shadow-soft">MP profile not found.</div>;
   }
 
-  const { raw, scores, ranks } = data;
+  const { raw, scores } = data;
   const role = getRole(data);
   const naNote = role ? NA_NOTES[role] : undefined;
   const attendanceNA = role === "Speaker" || role === "LOA";
 
-  return (
-    <div className="space-y-6">
-      <button onClick={() => navigate(-1)} className="text-sm font-medium text-indigo-600 hover:underline">← Back</button>
+  const rawStats = [
+    { label: "Attendance", value: raw.attendance_pct != null ? `${raw.attendance_pct.toFixed(1)}%` : "—" },
+    { label: "Questions", value: raw.questions_count ?? "—" },
+    { label: "Debates", value: raw.debates_count ?? "—" },
+    { label: "PMBs", value: raw.pmb_count ?? "—" },
+  ];
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-5">
-            {data.image_url ? (
-              <img
-                src={data.image_url}
-                alt={data.name}
-                className="h-24 w-24 rounded-2xl object-cover flex-shrink-0 border border-slate-200 shadow-sm"
-              />
-            ) : (
-              <div className="h-24 w-24 rounded-2xl bg-slate-100 flex-shrink-0 flex items-center justify-center text-slate-400 text-3xl font-semibold border border-slate-200">
-                {data.name.charAt(0)}
-              </div>
-            )}
-            <div>
-              <h1 className="text-3xl font-semibold text-slate-950">{data.name}</h1>
-              <p className="mt-2 text-sm text-slate-600">{data.constituency}, {data.state}</p>
-              {role && (
-                <div className="mt-3">
-                  <ScoreBadge label={role} />
+  return (
+    <div className="animate-fade-up space-y-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-brand-700"
+      >
+        <span aria-hidden>←</span> Back
+      </button>
+
+      {/* Header banner */}
+      <div className="overflow-hidden rounded-4xl border border-slate-200/70 bg-white shadow-card">
+        <div className="relative h-28 bg-brand-gradient sm:h-32">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        </div>
+        <div className="relative z-10 px-6 pb-6 sm:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-end gap-5">
+              {data.image_url ? (
+                <img
+                  src={data.image_url}
+                  alt={data.name}
+                  className="-mt-12 h-28 w-28 flex-shrink-0 rounded-3xl object-cover object-top ring-4 ring-white shadow-card sm:-mt-14"
+                />
+              ) : (
+                <div className="-mt-12 flex h-28 w-28 flex-shrink-0 items-center justify-center rounded-3xl bg-slate-900 text-4xl font-bold text-white ring-4 ring-white shadow-card sm:-mt-14">
+                  {data.name.charAt(0)}
                 </div>
               )}
+              <div className="pb-1">
+                <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-950">{data.name}</h1>
+                <p className="mt-1 text-sm text-slate-500">{data.constituency}, {data.state}</p>
+                {role && <div className="mt-3"><ScoreBadge label={role} /></div>}
+              </div>
             </div>
+            <div className="pb-1"><PartyTag party={data.party} /></div>
           </div>
-          <PartyTag party={data.party} />
-        </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <ScoreBar label="Attendance" value={scores.attendance_score} note={attendanceNA ? naNote : undefined} />
-          <ScoreBar label="Questions"  value={scores.questions_score}  note={role ? naNote : undefined} />
-          <ScoreBar label="Debates"    value={scores.debates_score}    note={role ? naNote : undefined} />
-          <ScoreBar label="PMBs"       value={scores.pmb_score}        note={role ? naNote : undefined} />
-        </div>
-
-        <div className="mt-8 rounded-3xl bg-slate-50 p-5">
-          <h2 className="text-lg font-semibold text-slate-900">Raw data</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-white p-4">
-              <p className="text-sm text-slate-500">Attendance</p>
-              <p className="mt-2 text-xl font-semibold text-slate-900">
-                {raw.attendance_pct != null ? `${raw.attendance_pct.toFixed(1)}%` : "—"}
-              </p>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-4">
-              <p className="text-sm text-slate-500">Questions</p>
-              <p className="mt-2 text-xl font-semibold text-slate-900">{raw.questions_count ?? "—"}</p>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-4">
-              <p className="text-sm text-slate-500">Debates</p>
-              <p className="mt-2 text-xl font-semibold text-slate-900">{raw.debates_count ?? "—"}</p>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-4">
-              <p className="text-sm text-slate-500">PMBs</p>
-              <p className="mt-2 text-xl font-semibold text-slate-900">{raw.pmb_count ?? "—"}</p>
-            </div>
+          <div className="mt-8 grid gap-x-8 gap-y-5 lg:grid-cols-2">
+            <ScoreBar label="Attendance" value={scores.attendance_score} note={attendanceNA ? naNote : undefined} />
+            <ScoreBar label="Questions"  value={scores.questions_score}  note={role ? naNote : undefined} />
+            <ScoreBar label="Debates"    value={scores.debates_score}    note={role ? naNote : undefined} />
+            <ScoreBar label="PMBs"       value={scores.pmb_score}        note={role ? naNote : undefined} />
           </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {rawStats.map((s) => (
+              <div key={s.label} className="rounded-3xl border border-slate-200/70 bg-slate-50/70 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{s.label}</p>
+                <p className="mt-1.5 font-display text-2xl font-bold text-slate-900 tabular-nums">{s.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <IntegritySection slug={slug} />
+
+          <p className="mt-5 text-xs text-slate-400">Performance data sourced from PRS Legislative Research.</p>
         </div>
-
-        <IntegritySection slug={slug} />
-
-        <p className="mt-4 text-sm text-slate-500">Data sourced from PRS Legislative Research.</p>
       </div>
     </div>
   );

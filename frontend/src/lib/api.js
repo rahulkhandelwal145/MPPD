@@ -14,5 +14,6 @@ export const fetchStatsSummary = () => api.get("/mps/stats/summary").then((res) 
 export const runPipeline = (payload) => api.post("/pipeline/run", payload).then((res) => res.data);
 export const fetchPipelineStatus = (run_id) => api.get(`/pipeline/status/${run_id}`).then((res) => res.data);
 export const fetchIntegrity = (slug) => api.get(`/integrity/${slug}`).then((res) => res.data);
+export const fetchIntegritySummary = () => api.get("/integrity/summary").then((res) => res.data);
 
 export default api;

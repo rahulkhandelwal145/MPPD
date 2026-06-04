@@ -15,15 +15,20 @@ export default function LeaderboardPage() {
   const bottom = useLeaderboard(metric, "bottom", 20);
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-3xl font-semibold text-slate-950">Leaderboard</h1>
-        <p className="mt-3 text-slate-600">Top and bottom ranked MPs for each performance metric.</p>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+    <div className="animate-fade-up space-y-8">
+      <div className="rounded-4xl border border-slate-200/70 bg-white p-8 shadow-soft">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gradient">Rankings</p>
+        <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Leaderboard</h1>
+        <p className="mt-2 text-slate-500">Top and bottom ranked MPs for each performance metric.</p>
+        <div className="mt-6 flex flex-wrap items-center gap-2">
           {METRICS.map((item) => (
             <button
               key={item.value}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${metric === item.value ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700"}`}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                metric === item.value
+                  ? "bg-brand-gradient text-white shadow-glow"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
               onClick={() => setMetric(item.value)}
             >
               {item.label}
