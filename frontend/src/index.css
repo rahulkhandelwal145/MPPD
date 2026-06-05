@@ -8,6 +8,16 @@
 
 html {
   scroll-behavior: smooth;
+  /* Always reserve space for the vertical scrollbar so the layout doesn't jump
+     sideways when content height changes (filtering, pagination, loading) and
+     the scrollbar toggles on/off. */
+  scrollbar-gutter: stable;
+}
+
+/* Belt-and-braces: clip any stray horizontal overflow. `clip` (not `hidden`)
+   does NOT create a scroll container, so the sticky navbar keeps working. */
+body {
+  overflow-x: clip;
 }
 
 body {
