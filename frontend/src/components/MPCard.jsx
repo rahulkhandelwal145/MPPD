@@ -1,10 +1,62 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import PartyTag from "./PartyTag";
 import ScoreBar from "./ScoreBar";
 import ScoreBadge from "./ScoreBadge";
-import { formatINR } from "../lib/format";
+import Sparkline from "./Sparkline";
+import { formatINR, formatPctChange } from "../lib/format";
 
 const CRORE = 10_000_000;
+
+const yearOf = (s) => s?.match(/(?:19|20)\d{2}/)?.[0];
+
+// Click-to-expand asset trajectory: a growth chip that, when clicked, reveals a
+// sparkline + the change since the MP's last and first declarations. Lives
+// inside the card's <Link>, so clicks must not trigger navigation.
+function AssetTrend({ mp }) {
+  const [open, setOpen] = useState(false);
+  if (mp.asset_growth_pct == null) return null;
+
+  const up = mp.asset_growth_pct >= 0;
+  const chipCls = up ? "bg-amber-100 text-amber-800 hover:bg-amber-200" : "bg-sky-100 text-sky-800 hover:bg-sky-200";
+  const lastYear = yearOf(mp.asset_growth_since);
+  const firstYear = yearOf(mp.asset_growth_first_since);
+
+  const toggle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen((v) => !v);
+  };
+
+  return (
+    <div className="mt-2">
+      <button type="button" onClick={toggle} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold transition ${chipCls}`}>
+        {up ? "▲" : "▼"} {formatPctChange(mp.asset_growth_pct)} assets{lastYear ? ` since ${lastYear}` : ""}
+        <span className="ml-0.5 text-[10px] opacity-70">{open ? "▴" : "▾"}</span>
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
+          <Sparkline points={mp.asset_series} height={56} />
+          <dl className="mt-1 space-y-0.5 text-xs">
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Since last term{lastYear ? ` (${lastYear})` : ""}</dt>
+              <dd className={`font-semibold ${up ? "text-amber-700" : "text-sky-700"}`}>{formatPctChange(mp.asset_growth_pct)}</dd>
+            </div>
+            {mp.asset_growth_first_pct != null && (
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Since first term{firstYear ? ` (${firstYear})` : ""}</dt>
+                <dd className={`font-semibold ${mp.asset_growth_first_pct >= 0 ? "text-amber-700" : "text-sky-700"}`}>
+                  {formatPctChange(mp.asset_growth_first_pct)}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Compact integrity chips driven by the list endpoint's affidavit summary.
 function IntegrityBadges({ mp }) {
@@ -82,11 +134,17 @@ function ScoreRing({ value }) {
 }
 
 function overallScore(mp) {
-  const vals = [mp.attendance_score, mp.questions_score, mp.debates_score, mp.pmb_score]
+  // Backend provides total_score (mean of available metrics incl. clean record);
+  // fall back to computing it client-side for endpoints that don't (e.g. leaderboard).
+  if (typeof mp.total_score === "number") return mp.total_score;
+  const vals = [mp.attendance_score, mp.questions_score, mp.debates_score, mp.pmb_score, mp.clean_record_score]
     .filter((x) => typeof x === "number");
   if (!vals.length) return null;
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
+
+const CLEAN_RECORD_NOTE =
+  "Starts at 100. Each conviction deducts points — major −50, minor −20 (smaller from the 4th on). Floored at 0; pending cases don't count.";
 
 export default function MPCard({ mp }) {
   const role = getRole(mp);
@@ -96,7 +154,7 @@ export default function MPCard({ mp }) {
   return (
     <Link
       to={`/mp/${mp.prs_slug}`}
-      className="group block h-full rounded-4xl border border-slate-200/70 bg-white p-5 shadow-soft transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-card"
+      className="group block h-full rounded-4xl border border-slate-200/70 bg-white p-5 shadow-soft transition-[box-shadow,border-color] duration-200 hover:border-brand-200 hover:shadow-card"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -112,7 +170,7 @@ export default function MPCard({ mp }) {
             </div>
           )}
           <div className="min-w-0">
-            <h2 className="truncate font-display text-lg font-bold tracking-tight text-slate-900 transition group-hover:text-brand-700">{mp.name}</h2>
+            <h2 className="line-clamp-2 font-display text-lg font-bold leading-tight tracking-tight text-slate-900 transition group-hover:text-brand-700">{mp.name}</h2>
             <p className="mt-0.5 truncate text-sm text-slate-500">{mp.constituency}, {mp.state}</p>
           </div>
         </div>
@@ -146,6 +204,7 @@ export default function MPCard({ mp }) {
       )}
 
       <IntegrityBadges mp={mp} />
+      <AssetTrend mp={mp} />
 
       <div className="mt-4 border-t border-slate-100 pt-4">
         <div className="mb-3 flex items-center justify-between">
@@ -160,6 +219,9 @@ export default function MPCard({ mp }) {
           <ScoreBar label="Questions"  value={mp.questions_score}  note={role ? naNote : undefined} />
           <ScoreBar label="Debates"    value={mp.debates_score}    note={role ? naNote : undefined} />
           <ScoreBar label="PMBs"       value={mp.pmb_score}        note={role ? naNote : undefined} />
+          {mp.clean_record_score != null && (
+            <ScoreBar label="Clean record" value={mp.clean_record_score} note={CLEAN_RECORD_NOTE} />
+          )}
         </div>
         <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 opacity-0 transition group-hover:opacity-100">
           View full profile <span aria-hidden>→</span>

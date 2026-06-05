@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.agents import myneta_pipeline
+from backend.core.assets import asset_growth, asset_growth_first, asset_series
 from backend.db.models import MpAffidavit, MpAssetHistory, MpCriminalCase, MPProfile, PipelineRun
 from backend.db.session import get_session
 
@@ -133,11 +134,12 @@ async def scrape_status(run_id: int, session: AsyncSession = Depends(get_session
 async def integrity_by_slug(slug: str, session: AsyncSession = Depends(get_session)):
     # Join mp_affidavits via mp_profiles.prs_slug
     profile_row = (await session.execute(
-        select(MPProfile.id).where(MPProfile.prs_slug == slug)
-    )).scalar_one_or_none()
+        select(MPProfile.id, MPProfile.terms).where(MPProfile.prs_slug == slug)
+    )).first()
 
     if profile_row is None:
         raise HTTPException(status_code=404, detail="MP not found")
+    profile_id, terms = profile_row
 
     affidavit = (await session.execute(
         select(MpAffidavit)
@@ -145,11 +147,13 @@ async def integrity_by_slug(slug: str, session: AsyncSession = Depends(get_sessi
             selectinload(MpAffidavit.criminal_cases),
             selectinload(MpAffidavit.asset_history),
         )
-        .where(MpAffidavit.mp_id == profile_row)
+        .where(MpAffidavit.mp_id == profile_id)
     )).scalar_one_or_none()
 
     if affidavit is None:
         raise HTTPException(status_code=404, detail="Integrity data not yet scraped for this MP")
+
+    _hist = [(h.election_label, h.declared_assets) for h in affidavit.asset_history]
 
     return {
         "candidate_name": affidavit.candidate_name,
@@ -177,6 +181,13 @@ async def integrity_by_slug(slug: str, session: AsyncSession = Depends(get_sessi
             "immovable_assets": affidavit.immovable_assets,
             "self_income": affidavit.self_income,
             "spouse_income": affidavit.spouse_income,
+            "growth": asset_growth(
+                affidavit.total_assets, _hist,
+            ) if (terms or 0) > 1 else None,
+            "growth_first": asset_growth_first(
+                affidavit.total_assets, _hist,
+            ) if (terms or 0) > 1 else None,
+            "series": asset_series(affidavit.total_assets, _hist) if (terms or 0) > 1 else [],
             "history": [
                 {
                     "election": h.election_label,

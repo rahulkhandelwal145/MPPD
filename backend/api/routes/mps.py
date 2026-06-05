@@ -6,7 +6,9 @@ from sqlalchemy import and_, case, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.schemas import MPSummary, MPDetail, StatsSummary
-from backend.db.models import MPProfile, MPScore, MPRawData, MpAffidavit, PipelineRun
+from backend.core.assets import asset_growth, asset_growth_first, asset_series
+from backend.core.scoring import compute_clean_record_score
+from backend.db.models import MPProfile, MPScore, MPRawData, MpAffidavit, MpAssetHistory, PipelineRun
 from backend.db.session import get_session
 
 router = APIRouter(prefix="/mps", tags=["mps"])
@@ -52,12 +54,111 @@ def _affidavit_aggregate():
             MpAffidavit.mp_id.label("mp_id"),
             func.max(MpAffidavit.total_criminal_cases).label("criminal_cases"),
             func.max(MpAffidavit.total_convictions).label("convictions"),
+            func.max(MpAffidavit.convictions_serious).label("convictions_serious"),
             func.max(MpAffidavit.total_assets).label("total_assets"),
             func.max(case((MpAffidavit.has_serious_cases, 1), else_=0)).label("serious"),
         )
         .where(MpAffidavit.mp_id.isnot(None))
         .group_by(MpAffidavit.mp_id)
         .subquery()
+    )
+
+
+async def _asset_growth_map(session: AsyncSession, mp_ids: list[int]) -> dict[int, dict]:
+    """{mp_id: asset_growth(...)} for the given MPs. One scan of their affidavits
+    + asset history, computed in Python (election labels are free-text, so the
+    'most recent prior election' can't be picked in SQL)."""
+    if not mp_ids:
+        return {}
+    aff_rows = (await session.execute(
+        select(MpAffidavit.id, MpAffidavit.mp_id, MpAffidavit.total_assets)
+        .where(MpAffidavit.mp_id.in_(mp_ids))
+    )).all()
+    aff_to_mp = {r.id: r.mp_id for r in aff_rows}
+    current = {r.mp_id: r.total_assets for r in aff_rows}
+
+    hist_by_mp: dict[int, list] = {}
+    if aff_to_mp:
+        hist_rows = (await session.execute(
+            select(MpAssetHistory.affidavit_id, MpAssetHistory.election_label, MpAssetHistory.declared_assets)
+            .where(MpAssetHistory.affidavit_id.in_(aff_to_mp.keys()))
+        )).all()
+        for r in hist_rows:
+            mp = aff_to_mp.get(r.affidavit_id)
+            if mp is not None:
+                hist_by_mp.setdefault(mp, []).append((r.election_label, r.declared_assets))
+
+    out = {}
+    for mp, total in current.items():
+        hist = hist_by_mp.get(mp, [])
+        g = asset_growth(total, hist)
+        if g is None:
+            continue  # first-time MP / no prior declaration
+        first = asset_growth_first(total, hist)
+        out[mp] = {
+            "pct": g["pct"],
+            "since": g["since"],
+            "first_pct": first["pct"] if first else None,
+            "first_since": first["since"] if first else None,
+            # compact points for the sparkline; drop the verbose label
+            "series": [{"year": p["year"], "assets": p["assets"]} for p in asset_series(total, hist)],
+        }
+    return out
+
+
+def _summary_from_row(row, growth_map: dict[int, dict] | None = None) -> MPSummary:
+    """Build an MPSummary (incl. the derived clean-record and total scores) from
+    a list-query row. Shared by the SQL-sorted and Python-sorted code paths."""
+    profile, score, criminal_cases, convictions, convictions_serious, total_assets, serious = row
+    # Asset growth is only meaningful for returning MPs (a first-time MP has no
+    # prior Lok Sabha declaration to compare against).
+    growth = (growth_map or {}).get(profile.id) if (profile.terms or 0) > 1 else None
+    clean = (
+        compute_clean_record_score(
+            convictions_serious or 0,
+            max((convictions or 0) - (convictions_serious or 0), 0),
+        )
+        if convictions is not None
+        else None
+    )
+    metrics = [
+        score.attendance_score, score.questions_score,
+        score.debates_score, score.pmb_score, clean,
+    ]
+    present = [m for m in metrics if m is not None]
+    total = round(sum(present) / len(present), 1) if present else None
+    return MPSummary(
+        name=profile.name,
+        prs_slug=profile.prs_slug,
+        constituency=profile.constituency,
+        state=profile.state,
+        party=profile.party,
+        is_minister=profile.is_minister,
+        is_speaker=profile.is_speaker,
+        is_loa=profile.is_loa,
+        age=profile.age,
+        gender=profile.gender,
+        education=profile.education,
+        terms=profile.terms,
+        image_url=profile.image_url,
+        attendance_score=score.attendance_score,
+        questions_score=score.questions_score,
+        debates_score=score.debates_score,
+        pmb_score=score.pmb_score,
+        peer_group=score.peer_group,
+        total_peers=score.total_peers,
+        criminal_cases=criminal_cases,
+        convictions=convictions,
+        convictions_serious=convictions_serious,
+        total_assets=total_assets,
+        has_serious_cases=bool(serious) if serious is not None else None,
+        clean_record_score=clean,
+        total_score=total,
+        asset_growth_pct=growth["pct"] if growth else None,
+        asset_growth_since=growth["since"] if growth else None,
+        asset_growth_first_pct=growth["first_pct"] if growth else None,
+        asset_growth_first_since=growth["first_since"] if growth else None,
+        asset_series=growth["series"] if growth else None,
     )
 
 
@@ -69,6 +170,8 @@ async def list_mps(
     is_minister: Optional[bool] = Query(None),
     is_speaker: Optional[bool] = Query(None),
     is_loa: Optional[bool] = Query(None),
+    terms: Optional[int] = Query(None, ge=1),
+    terms_min: Optional[int] = Query(None, ge=1),
     has_criminal_cases: Optional[bool] = Query(None),
     has_serious_cases: Optional[bool] = Query(None),
     is_convicted: Optional[bool] = Query(None),
@@ -76,7 +179,7 @@ async def list_mps(
     search: Optional[str] = Query(None),
     sort: Optional[str] = Query(
         None,
-        regex="^(attendance_score|questions_score|debates_score|pmb_score|total_assets|total_criminal_cases)$",
+        regex="^(attendance_score|questions_score|debates_score|pmb_score|total_score|total_assets|total_criminal_cases)$",
     ),
     direction: str = Query("desc", regex="^(asc|desc)$"),
     page: int = Query(1, ge=1),
@@ -87,7 +190,7 @@ async def list_mps(
     aff = _affidavit_aggregate()
 
     query = (
-        select(MPProfile, MPScore, aff.c.criminal_cases, aff.c.convictions, aff.c.total_assets, aff.c.serious)
+        select(MPProfile, MPScore, aff.c.criminal_cases, aff.c.convictions, aff.c.convictions_serious, aff.c.total_assets, aff.c.serious)
         .join(latest_scores, MPProfile.id == latest_scores.c.mp_id)
         .join(MPScore, and_(MPScore.mp_id == MPProfile.id, MPScore.scored_at == latest_scores.c.max_scored_at))
         .outerjoin(aff, aff.c.mp_id == MPProfile.id)
@@ -105,6 +208,10 @@ async def list_mps(
         query = query.where(MPProfile.is_speaker == is_speaker)
     if is_loa is not None:
         query = query.where(MPProfile.is_loa == is_loa)
+    if terms is not None:
+        query = query.where(MPProfile.terms == terms)
+    if terms_min is not None:
+        query = query.where(MPProfile.terms >= terms_min)
     # Integrity filters (against the joined affidavit aggregate)
     if has_criminal_cases:
         query = query.where(aff.c.criminal_cases > 0)
@@ -128,6 +235,29 @@ async def list_mps(
         "total_assets": aff.c.total_assets,
         "total_criminal_cases": aff.c.criminal_cases,
     }
+    # "total_score" is the mean of an MP's available 0–100 metrics (incl. the
+    # clean-record score, which is derived in Python). It can't be expressed as
+    # a single SQL column, so we sort & paginate it in-process — the dataset is
+    # small (~550 rows), so this is cheap. MPs with no scored metrics sort last.
+    if sort == "total_score":
+        rows = (await session.execute(query)).all()
+        growth_map = await _asset_growth_map(session, [r[0].id for r in rows])
+        summaries = [_summary_from_row(r, growth_map) for r in rows]
+        reverse = direction == "desc"
+        sentinel = float("-inf") if reverse else float("inf")
+        summaries.sort(
+            key=lambda s: s.total_score if s.total_score is not None else sentinel,
+            reverse=reverse,
+        )
+        total = len(summaries)
+        start = (page - 1) * limit
+        return {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "results": summaries[start : start + limit],
+        }
+
     if sort:
         column = sort_columns[sort]
         query = query.order_by(column.desc() if direction == "desc" else column.asc())
@@ -137,39 +267,13 @@ async def list_mps(
     total = await session.scalar(select(func.count()).select_from(query.subquery()))
     query = query.offset((page - 1) * limit).limit(limit)
     rows = (await session.execute(query)).all()
+    growth_map = await _asset_growth_map(session, [r[0].id for r in rows])
 
     return {
         "total": total or 0,
         "page": page,
         "limit": limit,
-        "results": [
-            MPSummary(
-                name=profile.name,
-                prs_slug=profile.prs_slug,
-                constituency=profile.constituency,
-                state=profile.state,
-                party=profile.party,
-                is_minister=profile.is_minister,
-                is_speaker=profile.is_speaker,
-                is_loa=profile.is_loa,
-                age=profile.age,
-                gender=profile.gender,
-                education=profile.education,
-                terms=profile.terms,
-                image_url=profile.image_url,
-                attendance_score=score.attendance_score,
-                questions_score=score.questions_score,
-                debates_score=score.debates_score,
-                pmb_score=score.pmb_score,
-                peer_group=score.peer_group,
-                total_peers=score.total_peers,
-                criminal_cases=criminal_cases,
-                convictions=convictions,
-                total_assets=total_assets,
-                has_serious_cases=bool(serious) if serious is not None else None,
-            )
-            for profile, score, criminal_cases, convictions, total_assets, serious in rows
-        ],
+        "results": [_summary_from_row(r, growth_map) for r in rows],
     }
 
 

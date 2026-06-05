@@ -16,6 +16,13 @@ function roleFlags(role) {
   }
 }
 
+// Terms dropdown value -> exact term count, or a minimum for the "5+" bucket.
+function termsParams(terms) {
+  if (!terms) return {};
+  if (terms === "5plus") return { terms_min: 5 };
+  return { terms: Number(terms) };
+}
+
 export default function Home() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -23,6 +30,7 @@ export default function Home() {
   const [stateFilter, setStateFilter] = useState("");
   const [gender, setGender] = useState("");
   const [role, setRole] = useState("");
+  const [terms, setTerms] = useState("");
   const [hasCriminalCases, setHasCriminalCases] = useState(false);
   const [hasSeriousCases, setHasSeriousCases] = useState(false);
   const [convicted, setConvicted] = useState(false);
@@ -50,7 +58,7 @@ export default function Home() {
   // Any filter change resets to page 1.
   const onPage1 = (setter) => (value) => { setter(value); setPage(1); };
   function handleClear() {
-    setQuery(""); setParty(""); setStateFilter(""); setGender(""); setRole("");
+    setQuery(""); setParty(""); setStateFilter(""); setGender(""); setRole(""); setTerms("");
     setHasCriminalCases(false); setHasSeriousCases(false); setConvicted(false);
     setCrorepati(false); setSort(""); setDirection("desc"); setPage(1);
   }
@@ -60,6 +68,7 @@ export default function Home() {
     state: stateFilter || undefined,
     gender: gender || undefined,
     ...roleFlags(role),
+    ...termsParams(terms),
     has_criminal_cases: hasCriminalCases || undefined,
     has_serious_cases: hasSeriousCases || undefined,
     is_convicted: convicted || undefined,
@@ -122,6 +131,8 @@ export default function Home() {
             onRoleChange={onPage1(setRole)}
             gender={gender}
             onGenderChange={onPage1(setGender)}
+            terms={terms}
+            onTermsChange={onPage1(setTerms)}
             sort={sort}
             onSortChange={onPage1(setSort)}
             direction={direction}
@@ -173,7 +184,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <div className="flex items-center justify-between rounded-4xl border border-slate-200/70 bg-white/80 p-3 pl-5 shadow-soft backdrop-blur">
+            <div className="flex items-center justify-between rounded-4xl border border-slate-200/70 bg-white p-3 pl-5 shadow-soft">
               <span className="text-sm text-slate-600">
                 Showing <span className="font-semibold text-slate-900">{mps.length}</span> of <span className="font-semibold text-slate-900">{data?.total ?? 0}</span> MPs
               </span>

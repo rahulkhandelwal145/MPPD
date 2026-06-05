@@ -1,6 +1,41 @@
-import { formatINR } from "../lib/format";
+import { formatINR, formatPctChange } from "../lib/format";
+import Sparkline from "./Sparkline";
 
 const CRORE = 10_000_000;
+
+function GrowthStat({ label, growth, current }) {
+  if (!growth) return null;
+  const up = growth.pct >= 0;
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className={`mt-1 text-lg font-bold ${up ? "text-amber-700" : "text-sky-700"}`}>
+        {up ? "▲" : "▼"} {formatPctChange(growth.pct)}
+      </p>
+      <p className="mt-0.5 text-xs text-slate-500">{formatINR(growth.previous_assets)} → {formatINR(current)}</p>
+    </div>
+  );
+}
+
+// Asset trajectory over time + growth since the MP's last and first
+// declarations. Shown only for non-first-time MPs (a prior declaration exists).
+function AssetTrajectory({ growth, growthFirst, series, current }) {
+  if (!growth) return null;
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-4">
+      <p className="text-sm font-medium text-slate-700">Asset trajectory</p>
+      {series && series.length >= 2 && (
+        <div className="mt-2">
+          <Sparkline points={series} height={120} showLabels />
+        </div>
+      )}
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <GrowthStat label={`Since last term${growth.since ? ` (${growth.since})` : ""}`} growth={growth} current={current} />
+        <GrowthStat label={`Since first term${growthFirst?.since ? ` (${growthFirst.since})` : ""}`} growth={growthFirst} current={current} />
+      </div>
+    </div>
+  );
+}
 
 // 1–5 bags by wealth tier: <1Cr, 1–5Cr, 5–25Cr, 25–100Cr, >100Cr.
 function bagCount(total) {
@@ -38,6 +73,9 @@ export default function AssetsPanel({ assets, education }) {
     total_liabilities,
     self_income,
     spouse_income,
+    growth,
+    growth_first,
+    series,
     history = [],
   } = assets || {};
 
@@ -57,6 +95,8 @@ export default function AssetsPanel({ assets, education }) {
           <p className="text-2xl font-semibold text-slate-900">{formatINR(total_assets)}</p>
         </div>
       </div>
+
+      <AssetTrajectory growth={growth} growthFirst={growth_first} series={series} current={total_assets} />
 
       {/* Figures */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

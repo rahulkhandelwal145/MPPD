@@ -27,8 +27,21 @@ class MPSummary(BaseModel):
     # Integrity summary (null when the MP has no scraped affidavit)
     criminal_cases: int | None = None
     convictions: int | None = None
+    convictions_serious: int | None = None
     total_assets: int | None = None
     has_serious_cases: bool | None = None
+    # % change in declared assets since the MP's most recent prior election,
+    # and since their earliest declaration on record (null for first-time MPs).
+    asset_growth_pct: float | None = None
+    asset_growth_since: str | None = None
+    asset_growth_first_pct: float | None = None
+    asset_growth_first_since: str | None = None
+    # Chronological [{year, assets}] for the asset-trajectory sparkline.
+    asset_series: list[dict] | None = None
+    # Absolute 0–100 integrity score derived from convictions (see core.scoring)
+    clean_record_score: int | None = None
+    # Mean of the MP's available 0–100 metrics (incl. clean_record_score)
+    total_score: float | None = None
 
 
 class MPRawData(BaseModel):

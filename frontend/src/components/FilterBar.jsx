@@ -32,6 +32,7 @@ export default function FilterBar({
   state, onStateChange, states = [],
   role, onRoleChange,
   gender, onGenderChange,
+  terms, onTermsChange,
   sort, onSortChange, direction, onDirectionChange,
   hasCriminalCases, onHasCriminalCasesChange,
   hasSeriousCases, onHasSeriousCasesChange,
@@ -65,8 +66,17 @@ export default function FilterBar({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Select label="Terms" value={terms} onChange={onTermsChange}>
+          <option value="">All terms</option>
+          <option value="1">1st term (first-time)</option>
+          <option value="2">2 terms</option>
+          <option value="3">3 terms</option>
+          <option value="4">4 terms</option>
+          <option value="5plus">5+ terms</option>
+        </Select>
         <Select label="Sort by" value={sort} onChange={onSortChange}>
           <option value="">Name</option>
+          <option value="total_score">Total score</option>
           <option value="attendance_score">Attendance</option>
           <option value="questions_score">Questions</option>
           <option value="debates_score">Debates</option>

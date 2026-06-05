@@ -19,3 +19,13 @@ export function formatINR(n) {
   }
   return `${sign}₹${enIN.format(abs)}`;
 }
+
+// Format a percentage change with an explicit sign, e.g. +85%, -12%.
+// Very large jumps collapse to a multiplier (×12) to stay readable.
+export function formatPctChange(pct) {
+  if (pct == null) return "—";
+  const sign = pct > 0 ? "+" : pct < 0 ? "-" : "";
+  const abs = Math.abs(pct);
+  if (abs >= 1000) return `${sign}${(abs / 100 + 1).toFixed(0)}×`;
+  return `${sign}${abs < 10 ? abs.toFixed(1) : Math.round(abs)}%`;
+}
