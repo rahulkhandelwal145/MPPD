@@ -88,11 +88,33 @@ All routes under `/api/v1`. **Route ordering in `mps.py` is critical**: `/leader
 
 Scores are joined via a `MAX(scored_at)` subquery so the API always returns the most recent pipeline run's scores.
 
-`GET /mps` accepts: `party`, `is_minister`, `is_speaker`, `is_loa` (all optional bool), `search`, `sort`, `direction`, `page`, `limit`.
+`GET /mps` accepts: `party`, `state`, `gender`, `is_minister`, `is_speaker`, `is_loa`, `has_criminal_cases`, `has_serious_cases`, `is_convicted`, `is_crorepati` (bools), `terms` (exact term count), `terms_min` (≥, used for the "5+ terms" bucket), `search`, `sort`, `direction`, `page`, `limit`. Integrity filters (`has_*`, `is_convicted`, `is_crorepati`) run against the `_affidavit_aggregate()` subquery (one row per `mp_id`) that's outer-joined into the list query.
+
+### Derived Scores & Asset Growth (`backend/core/`)
+
+Pure, dependency-free helpers (well unit-tested by example) consumed by the API routes — NOT part of the scraping pipeline:
+
+- **`core/scoring.py` → `compute_clean_record_score(serious, minor)`** — absolute 0–100 integrity score from an MP's *convictions* (not pending cases). Starts at 100; major conviction −50 (first 3) / −25 (4th+); minor −20 (first 3) / −10 (4th+); floored at 0. Major = `convictions_serious`, minor = `total_convictions − convictions_serious`. Null when the MP has no affidavit.
+- **`core/assets.py`** — `asset_growth` (% change since most recent prior election), `asset_growth_first` (% change since earliest declaration), and `asset_series` (chronological `[{year, label, assets}]` for the sparkline). `election_label` is free-text from the LLM, so a 4-digit year is regex-parsed out of it to order declarations. `CURRENT_ELECTION_YEAR = 2024`: history entries at/after 2024 are dropped (the extraction sometimes echoes the current declaration into history → would otherwise compare 2024→2024). All asset-growth output is **gated on `terms > 1`** in the routes — first-time MPs show no growth/graph (the user explicitly wants this).
+
+**`total_score`** (on `MPSummary`) is the mean of an MP's available 0–100 metrics — attendance/questions/debates/pmb scores **plus `clean_record_score`**. Because `clean_record_score` is derived in Python (not a SQL column), sorting by `total_score` can't be done in SQL: the `sort=total_score` branch in `list_mps` fetches all matching rows, builds summaries, then sorts & paginates in-process (fine at ~550 rows). MPs with no scored metrics sort last in both directions. The frontend card donut reuses `mp.total_score` when present, else recomputes client-side (e.g. the leaderboard endpoint doesn't supply it).
+
+`_summary_from_row()` is the single builder shared by the SQL-sorted and Python-sorted paths; `_asset_growth_map()` fetches affidavit totals + asset history for the page's MPs in two scans and computes growth/series per `mp_id` (can't pick "most recent prior" in SQL with free-text labels).
 
 ### Frontend
 
-React 18 + Vite + Tailwind. All API calls go through `frontend/src/lib/api.js`. Data fetching uses custom hooks (`useMPs`, `useMP`, `useLeaderboard`) that return `{ loading, data, error }`. Vite proxies `/api/v1/*` to `localhost:8000`, so no CORS issues in dev. The backend CORS config hardcodes `localhost:5173`.
+React 18 + Vite + Tailwind. All API calls go through `frontend/src/lib/api.js`. Data fetching uses custom hooks (`useMPs`, `useMP`, `useLeaderboard`) that return `{ loading, data, error }`. Vite proxies `/api/v1/*` to `localhost:8000`, so no CORS issues in dev. The backend CORS config hardcodes `localhost:5173` (note: if 5173 is busy Vite uses 5174 — the proxy still works, CORS is irrelevant in dev).
+
+Notable components: `MPCard` (cards on the list page — clean-record bar, integrity chips, and a click-to-expand `AssetTrend` showing a sparkline + since-last/since-first growth), `Sparkline` (dependency-free SVG line chart, shared by card and detail page), `AssetsPanel` (detail-page asset trajectory graph + figures), `FilterBar` (all filters incl. Terms and the Total-score sort), `ScoreBar`/`ScoreRing`.
+
+**When a hook destructures explicit params (`useMPs`), a new filter must be threaded through three places: the hook signature, the `fetchMPs(...)` call, AND the effect dependency array** — otherwise it won't trigger a refetch.
+
+**UI performance gotchas (the user is sensitive to a "shaky" UI — take these seriously):**
+- **No `backdrop-blur` on sticky or scroll-overlapping elements.** A sticky `backdrop-blur` re-blurs everything beneath it every scroll frame → judder on trackpads. The navbar and pagination bar use near-opaque `bg-white/95` instead.
+- **The page background gradient lives on a fixed, GPU-composited `body::before` layer** (`index.css`), NOT `background-attachment: fixed` (which repaints the gradient every scroll frame).
+- **`scrollbar-gutter: stable` on `html` + `overflow-x: clip` on `body`** (`index.css`) — reserves the scrollbar's width so the layout doesn't lurch sideways when result height changes toggle the scrollbar on/off. Use `clip` not `hidden` (hidden would make `body` a scroll container and break the sticky navbar).
+- **No `translate` on card hover** — lifting the card moved it out from under the cursor near edges, causing hover/un-hover oscillation. Cards use shadow/border hover only. The `fade-up` keyframe is opacity-only (no `translateY`) so the grid doesn't slide on every filter change.
+- **Tailwind `group` is not auto-scoped:** a tooltip using `group-hover:` fires when ANY ancestor `.group` is hovered. The card root is `.group`, so the `ScoreBar` info-tooltip must use a **named** group (`group/info` + `group-hover/info:`) or every tooltip on the card pops at once.
 
 ## Key Conventions
 

@@ -146,6 +146,9 @@ function overallScore(mp) {
 const CLEAN_RECORD_NOTE =
   "Starts at 100. Each conviction deducts points — major −50, minor −20 (smaller from the 4th on). Floored at 0; pending cases don't count.";
 
+const MPLADS_NOTE =
+  "MPLADS local-area-development fund score — percentile rank of constituency fund utilisation, works completion and payment efficiency.";
+
 export default function MPCard({ mp }) {
   const role = getRole(mp);
   const naNote = role ? NA_NOTES[role] : undefined;
@@ -221,6 +224,9 @@ export default function MPCard({ mp }) {
           <ScoreBar label="PMBs"       value={mp.pmb_score}        note={role ? naNote : undefined} />
           {mp.clean_record_score != null && (
             <ScoreBar label="Clean record" value={mp.clean_record_score} note={CLEAN_RECORD_NOTE} />
+          )}
+          {mp.mplads_score != null && (
+            <ScoreBar label="MPLADS funds" value={mp.mplads_score} note={MPLADS_NOTE} />
           )}
         </div>
         <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 opacity-0 transition group-hover:opacity-100">

@@ -122,6 +122,39 @@ class MpAffidavit(Base):
     asset_history: Mapped[list["MpAssetHistory"]] = relationship("MpAssetHistory", back_populates="affidavit")
 
 
+class MpMplads(Base):
+    __tablename__ = "mp_mplads"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # NULL when the CSV name could not be confidently matched to a profile.
+    mp_id: Mapped[int | None] = mapped_column(ForeignKey("mp_profiles.id"), nullable=True)
+    # Name exactly as in the CSV — also the upsert key, so re-ingesting the same
+    # CSV updates rows in place instead of duplicating them.
+    mp_name_raw: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    constituency: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    match_confidence: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+    # Raw values from the CSV
+    allocated_amount: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    total_expenditure: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    utilization_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    completed_works: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recommended_works: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_rate_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    transaction_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    successful_payments: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pending_payments: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Computed percentile-rank scores (0–100); NULL where the metric is undefined.
+    utilization_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    completion_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    payment_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mplads_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), server_default=text("NOW()"))
+
+
 class MpCriminalCase(Base):
     __tablename__ = "mp_criminal_cases"
 

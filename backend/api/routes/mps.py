@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.api.schemas import MPSummary, MPDetail, StatsSummary
 from backend.core.assets import asset_growth, asset_growth_first, asset_series
 from backend.core.scoring import compute_clean_record_score
-from backend.db.models import MPProfile, MPScore, MPRawData, MpAffidavit, MpAssetHistory, PipelineRun
+from backend.db.models import MPProfile, MPScore, MPRawData, MpAffidavit, MpAssetHistory, MpMplads, PipelineRun
 from backend.db.session import get_session
 
 router = APIRouter(prefix="/mps", tags=["mps"])
@@ -64,6 +64,22 @@ def _affidavit_aggregate():
     )
 
 
+def _mplads_aggregate():
+    """One row per mp_id with the headline MPLADS figures, grouped so a duplicate
+    name-match can't multiply rows in the list query. max() over a single-row MP
+    is exact; for the rare double-match it's a sensible summary."""
+    return (
+        select(
+            MpMplads.mp_id.label("mp_id"),
+            func.max(MpMplads.mplads_score).label("mplads_score"),
+            func.max(MpMplads.utilization_pct).label("utilization_pct"),
+        )
+        .where(MpMplads.mp_id.isnot(None))
+        .group_by(MpMplads.mp_id)
+        .subquery()
+    )
+
+
 async def _asset_growth_map(session: AsyncSession, mp_ids: list[int]) -> dict[int, dict]:
     """{mp_id: asset_growth(...)} for the given MPs. One scan of their affidavits
     + asset history, computed in Python (election labels are free-text, so the
@@ -109,7 +125,7 @@ async def _asset_growth_map(session: AsyncSession, mp_ids: list[int]) -> dict[in
 def _summary_from_row(row, growth_map: dict[int, dict] | None = None) -> MPSummary:
     """Build an MPSummary (incl. the derived clean-record and total scores) from
     a list-query row. Shared by the SQL-sorted and Python-sorted code paths."""
-    profile, score, criminal_cases, convictions, convictions_serious, total_assets, serious = row
+    profile, score, criminal_cases, convictions, convictions_serious, total_assets, serious, mplads_score, mplads_util = row
     # Asset growth is only meaningful for returning MPs (a first-time MP has no
     # prior Lok Sabha declaration to compare against).
     growth = (growth_map or {}).get(profile.id) if (profile.terms or 0) > 1 else None
@@ -154,6 +170,8 @@ def _summary_from_row(row, growth_map: dict[int, dict] | None = None) -> MPSumma
         has_serious_cases=bool(serious) if serious is not None else None,
         clean_record_score=clean,
         total_score=total,
+        mplads_score=mplads_score,
+        mplads_utilization_pct=mplads_util,
         asset_growth_pct=growth["pct"] if growth else None,
         asset_growth_since=growth["since"] if growth else None,
         asset_growth_first_pct=growth["first_pct"] if growth else None,
@@ -176,10 +194,11 @@ async def list_mps(
     has_serious_cases: Optional[bool] = Query(None),
     is_convicted: Optional[bool] = Query(None),
     is_crorepati: Optional[bool] = Query(None),
+    has_mplads: Optional[bool] = Query(None),
     search: Optional[str] = Query(None),
     sort: Optional[str] = Query(
         None,
-        regex="^(attendance_score|questions_score|debates_score|pmb_score|total_score|total_assets|total_criminal_cases)$",
+        regex="^(attendance_score|questions_score|debates_score|pmb_score|total_score|total_assets|total_criminal_cases|mplads_score)$",
     ),
     direction: str = Query("desc", regex="^(asc|desc)$"),
     page: int = Query(1, ge=1),
@@ -188,12 +207,17 @@ async def list_mps(
 ):
     latest_scores = await get_latest_scores(session)
     aff = _affidavit_aggregate()
+    mpl = _mplads_aggregate()
 
     query = (
-        select(MPProfile, MPScore, aff.c.criminal_cases, aff.c.convictions, aff.c.convictions_serious, aff.c.total_assets, aff.c.serious)
+        select(
+            MPProfile, MPScore, aff.c.criminal_cases, aff.c.convictions, aff.c.convictions_serious,
+            aff.c.total_assets, aff.c.serious, mpl.c.mplads_score, mpl.c.utilization_pct,
+        )
         .join(latest_scores, MPProfile.id == latest_scores.c.mp_id)
         .join(MPScore, and_(MPScore.mp_id == MPProfile.id, MPScore.scored_at == latest_scores.c.max_scored_at))
         .outerjoin(aff, aff.c.mp_id == MPProfile.id)
+        .outerjoin(mpl, mpl.c.mp_id == MPProfile.id)
     )
 
     if party is not None:
@@ -221,6 +245,9 @@ async def list_mps(
         query = query.where(aff.c.convictions > 0)
     if is_crorepati:
         query = query.where(aff.c.total_assets >= CROREPATI_THRESHOLD)
+    # Exclude MPs with no matched MPLADS record (keep only those with a joined row).
+    if has_mplads:
+        query = query.where(mpl.c.mp_id.isnot(None))
     if search:
         term = f"%{search}%"
         query = query.where(
@@ -234,6 +261,7 @@ async def list_mps(
         "pmb_score": MPScore.pmb_score,
         "total_assets": aff.c.total_assets,
         "total_criminal_cases": aff.c.criminal_cases,
+        "mplads_score": mpl.c.mplads_score,
     }
     # "total_score" is the mean of an MP's available 0–100 metrics (incl. the
     # clean-record score, which is derived in Python). It can't be expressed as
@@ -370,10 +398,11 @@ async def stats_summary(session: AsyncSession = Depends(get_session)):
 async def get_mp(slug: str, session: AsyncSession = Depends(get_session)):
     latest_scores = await get_latest_scores(session)
     query = (
-        select(MPProfile, MPScore, MPRawData)
+        select(MPProfile, MPScore, MPRawData, MpMplads)
         .join(MPScore, MPScore.mp_id == MPProfile.id)
         .join(MPRawData, MPRawData.mp_id == MPProfile.id)
         .join(latest_scores, and_(MPScore.mp_id == latest_scores.c.mp_id, MPScore.scored_at == latest_scores.c.max_scored_at))
+        .outerjoin(MpMplads, MpMplads.mp_id == MPProfile.id)
         .where(MPProfile.prs_slug == slug)
         .order_by(MPRawData.scraped_at.desc())
         .limit(1)
@@ -382,7 +411,7 @@ async def get_mp(slug: str, session: AsyncSession = Depends(get_session)):
     row = result.one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="MP not found")
-    profile, score, raw = row
+    profile, score, raw, mplads = row
     return MPDetail(
         name=profile.name,
         prs_slug=profile.prs_slug,
@@ -427,4 +456,20 @@ async def get_mp(slug: str, session: AsyncSession = Depends(get_session)):
         },
         peer_group=score.peer_group,
         scored_at=score.scored_at,
+        mplads={
+            "match_confidence": mplads.match_confidence,
+            "allocated_amount": mplads.allocated_amount,
+            "total_expenditure": mplads.total_expenditure,
+            "utilization_pct": mplads.utilization_pct,
+            "completed_works": mplads.completed_works,
+            "recommended_works": mplads.recommended_works,
+            "completion_rate_pct": mplads.completion_rate_pct,
+            "transaction_count": mplads.transaction_count,
+            "successful_payments": mplads.successful_payments,
+            "pending_payments": mplads.pending_payments,
+            "utilization_score": mplads.utilization_score,
+            "completion_score": mplads.completion_score,
+            "payment_score": mplads.payment_score,
+            "mplads_score": mplads.mplads_score,
+        } if mplads is not None else None,
     )

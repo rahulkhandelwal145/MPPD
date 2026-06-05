@@ -1,9 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MPCard from "../components/MPCard";
 import SearchBar from "../components/SearchBar";
 import FilterBar from "../components/FilterBar";
 import useMPs from "../hooks/useMPs";
 import { fetchParties, fetchStates, fetchStatsSummary, fetchIntegritySummary } from "../lib/api";
+
+// Persist the list view (filters/search/sort/page) for this tab so returning
+// from an MP profile via Back restores it instead of resetting to defaults.
+const FILTERS_KEY = "mpList.filters";
+
+function loadSavedFilters() {
+  try {
+    return JSON.parse(sessionStorage.getItem(FILTERS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
 
 // Role dropdown value -> minister/speaker/loa flags sent to the API.
 function roleFlags(role) {
@@ -24,29 +36,43 @@ function termsParams(terms) {
 }
 
 export default function Home() {
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [party, setParty] = useState("");
-  const [stateFilter, setStateFilter] = useState("");
-  const [gender, setGender] = useState("");
-  const [role, setRole] = useState("");
-  const [terms, setTerms] = useState("");
-  const [hasCriminalCases, setHasCriminalCases] = useState(false);
-  const [hasSeriousCases, setHasSeriousCases] = useState(false);
-  const [convicted, setConvicted] = useState(false);
-  const [crorepati, setCrorepati] = useState(false);
-  const [sort, setSort] = useState("");
-  const [direction, setDirection] = useState("desc");
-  const [page, setPage] = useState(1);
+  const saved = useMemo(loadSavedFilters, []);
+  const [query, setQuery] = useState(saved.query ?? "");
+  const [debouncedQuery, setDebouncedQuery] = useState(saved.query ?? "");
+  const [party, setParty] = useState(saved.party ?? "");
+  const [stateFilter, setStateFilter] = useState(saved.stateFilter ?? "");
+  const [gender, setGender] = useState(saved.gender ?? "");
+  const [role, setRole] = useState(saved.role ?? "");
+  const [terms, setTerms] = useState(saved.terms ?? "");
+  const [hasCriminalCases, setHasCriminalCases] = useState(saved.hasCriminalCases ?? false);
+  const [hasSeriousCases, setHasSeriousCases] = useState(saved.hasSeriousCases ?? false);
+  const [convicted, setConvicted] = useState(saved.convicted ?? false);
+  const [crorepati, setCrorepati] = useState(saved.crorepati ?? false);
+  const [hasMplads, setHasMplads] = useState(saved.hasMplads ?? false);
+  const [sort, setSort] = useState(saved.sort ?? "");
+  const [direction, setDirection] = useState(saved.direction ?? "desc");
+  const [page, setPage] = useState(saved.page ?? 1);
   const [parties, setParties] = useState([]);
   const [states, setStates] = useState([]);
   const [stats, setStats] = useState(null);
   const [integrity, setIntegrity] = useState(null);
 
+  // Skip the first run so restoring a saved search doesn't reset the saved page.
+  const didMount = useRef(false);
   useEffect(() => {
+    if (!didMount.current) { didMount.current = true; return; }
     const t = setTimeout(() => { setDebouncedQuery(query); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [query]);
+
+  // Persist the list view so Back from an MP profile restores it.
+  useEffect(() => {
+    sessionStorage.setItem(FILTERS_KEY, JSON.stringify({
+      query, party, stateFilter, gender, role, terms,
+      hasCriminalCases, hasSeriousCases, convicted, crorepati, hasMplads,
+      sort, direction, page,
+    }));
+  }, [query, party, stateFilter, gender, role, terms, hasCriminalCases, hasSeriousCases, convicted, crorepati, hasMplads, sort, direction, page]);
 
   useEffect(() => {
     fetchParties().then(setParties).catch(() => {});
@@ -60,7 +86,7 @@ export default function Home() {
   function handleClear() {
     setQuery(""); setParty(""); setStateFilter(""); setGender(""); setRole(""); setTerms("");
     setHasCriminalCases(false); setHasSeriousCases(false); setConvicted(false);
-    setCrorepati(false); setSort(""); setDirection("desc"); setPage(1);
+    setCrorepati(false); setHasMplads(false); setSort(""); setDirection("desc"); setPage(1);
   }
 
   const { loading, data, error } = useMPs({
@@ -73,6 +99,7 @@ export default function Home() {
     has_serious_cases: hasSeriousCases || undefined,
     is_convicted: convicted || undefined,
     is_crorepati: crorepati || undefined,
+    has_mplads: hasMplads || undefined,
     search: debouncedQuery || undefined,
     sort: sort || undefined,
     direction,
@@ -145,6 +172,8 @@ export default function Home() {
             onConvictedChange={onPage1(setConvicted)}
             crorepati={crorepati}
             onCrorepatiChange={onPage1(setCrorepati)}
+            hasMplads={hasMplads}
+            onHasMpladsChange={onPage1(setHasMplads)}
             onClear={handleClear}
           />
       </div>

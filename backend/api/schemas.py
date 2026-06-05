@@ -42,6 +42,10 @@ class MPSummary(BaseModel):
     clean_record_score: int | None = None
     # Mean of the MP's available 0–100 metrics (incl. clean_record_score)
     total_score: float | None = None
+    # MPLADS local-area-development summary (null when the MP has no matched row).
+    # Kept separate from total_score — it measures fund use, not parliamentary work.
+    mplads_score: int | None = None
+    mplads_utilization_pct: float | None = None
 
 
 class MPRawData(BaseModel):
@@ -58,6 +62,26 @@ class MPRawData(BaseModel):
     state_avg_debates: float | None
     national_avg_pmb: float | None
     state_avg_pmb: float | None
+
+
+class MpladsData(BaseModel):
+    """Phase 3 MPLADS local-area-development funds (null when the MP has no
+    matched MPLADS row). Allocations include 17th-LS carry-forward; scores are
+    peer-relative percentile ranks so the carry-forward doesn't skew fairness."""
+    match_confidence: str | None
+    allocated_amount: int | None
+    total_expenditure: int | None
+    utilization_pct: float | None
+    completed_works: int | None
+    recommended_works: int | None
+    completion_rate_pct: float | None
+    transaction_count: int | None
+    successful_payments: int | None
+    pending_payments: int | None
+    utilization_score: int | None
+    completion_score: int | None
+    payment_score: int | None
+    mplads_score: int | None
 
 
 class MPDetail(BaseModel):
@@ -79,6 +103,7 @@ class MPDetail(BaseModel):
     ranks: dict[str, int | None]
     peer_group: str
     scored_at: datetime | None
+    mplads: MpladsData | None = None
 
 
 class LeaderboardResponse(BaseModel):

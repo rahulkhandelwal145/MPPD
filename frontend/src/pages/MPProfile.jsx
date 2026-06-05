@@ -4,6 +4,7 @@ import ScoreBadge from "../components/ScoreBadge";
 import PartyTag from "../components/PartyTag";
 import { getRole } from "../components/MPCard";
 import IntegritySection from "../components/IntegritySection";
+import MpladsPanel from "../components/MpladsPanel";
 import useMP from "../hooks/useMP";
 
 const NA_NOTES = {
@@ -94,6 +95,8 @@ export default function MPProfile() {
               </div>
             ))}
           </div>
+
+          <MpladsPanel mplads={data.mplads} />
 
           <IntegritySection slug={slug} />
 

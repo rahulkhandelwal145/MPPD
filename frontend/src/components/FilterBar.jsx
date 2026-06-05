@@ -38,6 +38,7 @@ export default function FilterBar({
   hasSeriousCases, onHasSeriousCasesChange,
   convicted, onConvictedChange,
   crorepati, onCrorepatiChange,
+  hasMplads, onHasMpladsChange,
   onClear,
 }) {
   return (
@@ -81,6 +82,7 @@ export default function FilterBar({
           <option value="questions_score">Questions</option>
           <option value="debates_score">Debates</option>
           <option value="pmb_score">PMBs</option>
+          <option value="mplads_score">MPLADS funds</option>
           <option value="total_assets">Total assets</option>
           <option value="total_criminal_cases">Criminal cases</option>
         </Select>
@@ -96,6 +98,7 @@ export default function FilterBar({
         <ToggleChip label="Serious cases" checked={hasSeriousCases} onChange={onHasSeriousCasesChange} />
         <ToggleChip label="Convicted" checked={convicted} onChange={onConvictedChange} />
         <ToggleChip label="Crorepati (₹1 Cr+)" checked={crorepati} onChange={onCrorepatiChange} />
+        <ToggleChip label="Exclude missing MPLADS" checked={hasMplads} onChange={onHasMpladsChange} />
         <button
           type="button"
           onClick={onClear}
