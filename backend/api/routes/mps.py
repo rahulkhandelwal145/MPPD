@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.api.schemas import MPSummary, MPDetail, StatsSummary
 from backend.core.assets import asset_growth, asset_growth_first, asset_series
 from backend.core.scoring import compute_clean_record_score
-from backend.db.models import MPProfile, MPScore, MPRawData, MpAffidavit, MpAssetHistory, MpMplads, MpStatement, PipelineRun
+from backend.db.models import MPProfile, MPScore, MPRawData, MpAffidavit, MpAssetHistory, MpMplads, MpStatement, MpNewsArticle, PipelineRun
 from backend.db.session import get_session
 
 router = APIRouter(prefix="/mps", tags=["mps"])
@@ -418,6 +418,73 @@ async def stats_summary(session: AsyncSession = Depends(get_session)):
         avg_debates_score=row[4],
         avg_pmb_score=row[5],
     )
+
+
+@router.get("/freshness")
+async def data_freshness(session: AsyncSession = Depends(get_session)):
+    """Last-updated timestamps and record counts for every contributing data source."""
+
+    # PRS — parliamentary performance (pipeline_runs + mp_profiles)
+    prs_run = (await session.execute(
+        select(PipelineRun)
+        .where(PipelineRun.status == "complete")
+        .order_by(PipelineRun.completed_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    prs_count = await session.scalar(select(func.count(MPProfile.id)))
+
+    # MyNeta — criminal & asset declarations (mp_affidavits)
+    myneta_at = await session.scalar(select(func.max(MpAffidavit.scraped_at)))
+    myneta_count = await session.scalar(
+        select(func.count(MpAffidavit.id)).where(MpAffidavit.extraction_success == True)
+    )
+
+    # MPLADS — constituency funds (mp_mplads)
+    mplads_at = await session.scalar(select(func.max(MpMplads.ingested_at)))
+    mplads_count = await session.scalar(
+        select(func.count(MpMplads.id)).where(MpMplads.mp_id.isnot(None))
+    )
+
+    # Statements — Google News / LLM pipeline (mp_news_articles)
+    stmt_at = await session.scalar(select(func.max(MpNewsArticle.fetched_at)))
+    stmt_count = await session.scalar(select(func.count(MpStatement.id)))
+
+    return {
+        "sources": [
+            {
+                "id": "prs",
+                "label": "Parliamentary Performance",
+                "provider": "PRS Legislative Research",
+                "last_run_at": prs_run.completed_at.isoformat() if prs_run else None,
+                "record_count": prs_count or 0,
+                "unit": "MPs",
+            },
+            {
+                "id": "integrity",
+                "label": "Criminal & Asset Declarations",
+                "provider": "ADR / MyNeta",
+                "last_run_at": myneta_at.isoformat() if myneta_at else None,
+                "record_count": myneta_count or 0,
+                "unit": "affidavits",
+            },
+            {
+                "id": "mplads",
+                "label": "Constituency Funds (MPLADS)",
+                "provider": "data.gov.in",
+                "last_run_at": mplads_at.isoformat() if mplads_at else None,
+                "record_count": mplads_count or 0,
+                "unit": "MPs matched",
+            },
+            {
+                "id": "statements",
+                "label": "Public Statements",
+                "provider": "Google News",
+                "last_run_at": stmt_at.isoformat() if stmt_at else None,
+                "record_count": stmt_count or 0,
+                "unit": "statements stored",
+            },
+        ]
+    }
 
 
 @router.get("/{slug}", response_model=MPDetail)

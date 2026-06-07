@@ -25,9 +25,7 @@ export default function Navbar() {
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">18th Lok Sabha</span>
           </span>
         </Link>
-        <nav className="flex items-center gap-1">
-          <NavLink to="/" className={navClass} end>Home</NavLink>
-        </nav>
+        <nav className="flex items-center gap-1" />
       </div>
     </header>
   );
