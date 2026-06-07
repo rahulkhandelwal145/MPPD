@@ -1,7 +1,7 @@
 import { PARTY_SYMBOL_URLS } from "./PartySymbol";
 
 // Short display labels for the pill badge — full names are too wide for cards.
-const PARTY_ABBR = {
+export const PARTY_ABBR = {
   "Bharatiya Janata Party":                           "BJP",
   "Indian National Congress":                         "INC",
   "Samajwadi Party":                                  "SP",

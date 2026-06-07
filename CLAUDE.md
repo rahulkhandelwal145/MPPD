@@ -62,6 +62,34 @@ Migration files live in `backend/db/migrations/versions/`. Alembic config is `ba
 
 Display-only feature (does **not** affect any score) that surfaces what MPs say in their own words. Weekly pipeline per MP: Google News RSS → trusted-outlet whitelist → fetch+clean article text → LLM quote extraction → LLM classification (A/B/C/D/E framework) → store only non-E statements.
 
+**Statement classification categories** (defined in `agents/statement_agent.py → CLASSIFICATION_PROMPT`):
+
+| Category | Label | Constitutional basis | Notes |
+|---|---|---|---|
+| **A1** | Sexist / Anti-women | Arts. 14, 15, 21 | MP must personally demean/exclude women — policy advocacy for women's rights → D or E |
+| **A2** | Casteist / Discriminatory | Arts. 15, 17, 46 | MP personally asserts caste superiority — criticising another party's record → E |
+| **A3** | Communally divisive | Arts. 14, 15, 25, 51A-e | |
+| **A4** | Homophobic / Transphobic | Art. 21 | MP personally demeans LGBTQ+ persons — opposing discriminatory legislation → D or E |
+| **A5** | Anti-disabled / Ageist | RPWD Act, Art. 41 | |
+| **B1** | Medical pseudoscience | Art. 51A-h, ICMR/WHO | Must cite contradicted data source; without one → E |
+| **B2** | Climate / environment denial | Art. 51A-g-h | Must cite contradicted data source |
+| **B3** | Historical revisionism as fact | Art. 51A-h | Must cite contradicted data source |
+| **B4** | Vaccine / health denial | Art. 51A-h, WHO | Must cite contradicted data source |
+| **B5** | Economic reality denial | NSSO/CMIE/RBI data | Must cite contradicted data source |
+| **C1** | Religious pseudoscience | Art. 51A-h | Must cite contradicted data source |
+| **C2** | Theocratic statement | Preamble, Arts. 25–28 | Must cite contradicted data source |
+| **C3** | Religious incitement | Art. 51A-e, IPC 153A | Must cite contradicted data source |
+| **D1** | Constructive — data-backed advocacy | | Stored, shown green |
+| **D2** | Constructive — specific policy demand | | Stored, shown green |
+| **D3** | Constructive — vulnerable group advocacy | | Stored, shown green |
+| **D4** | Constructive — accountability demand | | Stored, shown green |
+| **D5** | Constructive — evidence-based position | | Stored, shown green |
+| **E** | Political opinion | | **Never stored** — legitimate political views always E |
+
+`category_group` (stored column) = first character of `category` (`A`/`B`/`C`/`D`). Flagged = A/B/C (red/orange/amber chips). Constructive = D (green). E is discarded.
+
+**Hard guards that force E regardless of LLM output:** confidence < 70; `speaker_is_mp=false` on an A/B/C category (MP is reporting or criticising someone else's view, not personally expressing it); B/C with no `data_contradicted` or `constitutional_anchor` supplied.
+
 1. **scraper/news.py** — `fetch_rss(mp_name)` queries Google News RSS (no API key). Gotcha: `entry.link` is an encrypted Google News redirect — decoded via `googlenewsdecoder` package (`gnewsdecoder(url)`), which calls Google's batch API. Whitelist filtering uses `entry_source_domain` (the `<source url=...>` href = real publisher). `TRUSTED_DOMAINS` is a 15-outlet whitelist; everything else is discarded. `html_to_text` keeps `<p>` paragraphs. **Known limitation:** only ~6 of 543 MPs get coverage from these 15 English national outlets — expanding the whitelist is deferred (see memory).
 2. **agents/statement_agent.py** — `extract_quotes` (only direct quotes, capped at 20/article) + `classify_statement`. **Model split:** extraction uses `groq_model` (8B, high limits); classification uses `groq_classification_model` (70B, 100K TPD) with Ollama fallback on rate limit. Guards force category **E** when: confidence < 70, category invalid, `speaker_is_mp=false` on a flagged category (A/B/C), or a B/C category cites no data source. `speaker_is_mp` is a boolean field in the LLM's JSON response — replaces the old hardcoded `_THIRD_PARTY_PREFIXES` regex. Only non-E rows are ever stored.
 3. **pipeline/news_pipeline.py** — async `run_for_mp` / `run_all`. Skips articles already in `mp_news_articles` (url is the dedupe key) and entries older than **30 days** (`LOOKBACK_DAYS = 30`). `run_all_sync` is the blocking wrapper for APScheduler + `BackgroundTasks`. Supports `offset` param for batched manual runs. Network/LLM calls are sync and run inline (background job, not the API event loop).
