@@ -2,6 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import ScoreBar from "../components/ScoreBar";
 import ScoreBadge from "../components/ScoreBadge";
 import PartyTag from "../components/PartyTag";
+import PartySymbol from "../components/PartySymbol";
 import { getRole } from "../components/MPCard";
 import IntegritySection from "../components/IntegritySection";
 import StatementMonitor from "../components/StatementMonitor";
@@ -78,7 +79,10 @@ export default function MPProfile() {
                 {role && <div className="mt-3"><ScoreBadge label={role} /></div>}
               </div>
             </div>
-            <div className="pb-1"><PartyTag party={data.party} /></div>
+            <div className="flex flex-col items-end gap-2 pb-1">
+              <PartySymbol party={data.party} size="h-14 w-14" />
+              <PartyTag party={data.party} />
+            </div>
           </div>
 
           <div className="mt-8 grid gap-x-8 gap-y-5 lg:grid-cols-2">
