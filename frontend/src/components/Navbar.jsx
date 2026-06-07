@@ -14,11 +14,14 @@ export default function Navbar() {
         <Link to="/" className="group flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand-gradient text-white shadow-glow transition-transform group-hover:scale-105">
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 20V10M10 20V5M16 20v-8M22 20H2" />
+              <path d="M9 11l3 3L22 4" />
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
             </svg>
           </span>
           <span className="flex flex-col leading-none">
-            <span className="font-display text-lg font-extrabold tracking-tight text-slate-900">MP Scorer</span>
+            <span className="font-display text-lg font-extrabold tracking-tight text-slate-900">
+              Before<span className="text-gradient">YouVote</span>
+            </span>
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">18th Lok Sabha</span>
           </span>
         </Link>

@@ -46,6 +46,8 @@ class MPSummary(BaseModel):
     # Kept separate from total_score — it measures fund use, not parliamentary work.
     mplads_score: int | None = None
     mplads_utilization_pct: float | None = None
+    # Count of flagged (A/B/C) statements from the Statement Monitor (null = none stored).
+    flagged_count: int | None = None
 
 
 class MPRawData(BaseModel):

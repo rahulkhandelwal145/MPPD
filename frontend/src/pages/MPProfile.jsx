@@ -4,6 +4,7 @@ import ScoreBadge from "../components/ScoreBadge";
 import PartyTag from "../components/PartyTag";
 import { getRole } from "../components/MPCard";
 import IntegritySection from "../components/IntegritySection";
+import StatementMonitor from "../components/StatementMonitor";
 import MpladsPanel from "../components/MpladsPanel";
 import useMP from "../hooks/useMP";
 
@@ -99,6 +100,8 @@ export default function MPProfile() {
           <MpladsPanel mplads={data.mplads} />
 
           <IntegritySection slug={slug} />
+
+          <StatementMonitor slug={slug} />
 
           <p className="mt-5 text-xs text-slate-400">Performance data sourced from PRS Legislative Research.</p>
         </div>

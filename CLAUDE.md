@@ -58,6 +58,40 @@ Phase 2 tables are **not managed by Alembic** — they are created automatically
 
 Migration files live in `backend/db/migrations/versions/`. Alembic config is `backend/alembic.ini`; the `script_location` is relative so alembic must be invoked from `backend/`.
 
+### Phase 4 — Public Statement Monitor
+
+Display-only feature (does **not** affect any score) that surfaces what MPs say in their own words. Weekly pipeline per MP: Google News RSS → trusted-outlet whitelist → fetch+clean article text → LLM quote extraction → LLM classification (A/B/C/D/E framework) → store only non-E statements.
+
+1. **scraper/news.py** — `fetch_rss(mp_name)` queries Google News RSS (no API key). Gotcha: `entry.link` is an encrypted Google News redirect — decoded via `googlenewsdecoder` package (`gnewsdecoder(url)`), which calls Google's batch API. Whitelist filtering uses `entry_source_domain` (the `<source url=...>` href = real publisher). `TRUSTED_DOMAINS` is a 15-outlet whitelist; everything else is discarded. `html_to_text` keeps `<p>` paragraphs. **Known limitation:** only ~6 of 543 MPs get coverage from these 15 English national outlets — expanding the whitelist is deferred (see memory).
+2. **agents/statement_agent.py** — `extract_quotes` (only direct quotes, capped at 20/article) + `classify_statement`. **Model split:** extraction uses `groq_model` (8B, high limits); classification uses `groq_classification_model` (70B, 100K TPD) with Ollama fallback on rate limit. Guards force category **E** when: confidence < 70, category invalid, `speaker_is_mp=false` on a flagged category (A/B/C), or a B/C category cites no data source. `speaker_is_mp` is a boolean field in the LLM's JSON response — replaces the old hardcoded `_THIRD_PARTY_PREFIXES` regex. Only non-E rows are ever stored.
+3. **pipeline/news_pipeline.py** — async `run_for_mp` / `run_all`. Skips articles already in `mp_news_articles` (url is the dedupe key) and entries older than **30 days** (`LOOKBACK_DAYS = 30`). `run_all_sync` is the blocking wrapper for APScheduler + `BackgroundTasks`. Supports `offset` param for batched manual runs. Network/LLM calls are sync and run inline (background job, not the API event loop).
+4. **pipeline/reclassify_stored.py** — backfill script: re-extracts quotes and re-classifies from already-stored `article_text` without hitting news sites. Use after changing the classification prompt or model. Run via `run_reclassify.bat [--slug <slug>] [--limit N]`. Clears existing statements for affected MPs before re-inserting.
+
+**LLM config (`backend/core/config.py`):**
+- `groq_model`: `llama-3.1-8b-instant` (extraction)
+- `groq_classification_model`: `llama-3.3-70b-versatile` (classification)
+- `ollama_model`: `llama3.1:8b` (local fallback — downloaded; same family as Groq 8B)
+- `ollama_base_url`: `http://localhost:11434`
+
+**Scheduling:** APScheduler `BackgroundScheduler` in `api/main.py` runs `run_all_sync` every Sunday 02:00. Manual trigger: `POST /api/v1/statements/run` (optional body `{"limit": N, "slug": "...", "offset": N}`). In practice ~4–5h for all 543 MPs (most MPs return 0 whitelisted articles; actual rate ~1 article/MP not 10).
+
+**Tables** (`mp_news_articles`, `mp_statements`) are **not** Alembic-managed — created on startup via `Base.metadata.create_all()` alongside `mp_mplads`. `mp_statements.category_group` = `category[0]`; flagged = A/B/C, constructive = D.
+
+**Bat files:**
+- `run_statement_monitor.bat [--limit N] [--offset N] [--slug <slug>]` — full pipeline (fetch + extract + classify)
+- `run_reclassify.bat [--limit N] [--slug <slug>]` — reclassify stored articles only (no HTTP calls)
+- Logs written to `logs/statement_monitor.log` and `logs/reclassify.log`
+
+### Phase 4 API Routes
+
+All under `/api/v1/statements`. **Route ordering:** `/summary`, `/run`, `/pipeline/status` must precede `/{slug}`.
+- `GET /statements/{slug}` — flagged + constructive lists for one MP (params `days=30`, `group=A|B|C|D`). Always includes `disclaimer`.
+- `GET /statements/summary` — aggregate stats (most-flagged/constructive MPs, category breakdown).
+- `POST /statements/run` — triggers pipeline as a BackgroundTask.
+- `GET /statements/pipeline/status` — last-run status backed by live DB counts.
+
+Frontend: `StatementMonitor` (panel below `IntegritySection` on the profile, via `useStatements` hook) → `StatementCard` → `StatementFlag` (group colours: A red / B orange / C amber / D green). Confidence shows on hover; verbatim quote + external article link always shown; AI disclaimer always visible.
+
 ### Phase 2 — MyNeta Integrity Pipeline
 
 `run_integrity_scrape.bat` (or `asyncio.run(run())` directly) runs a standalone pipeline:
@@ -88,7 +122,7 @@ All routes under `/api/v1`. **Route ordering in `mps.py` is critical**: `/leader
 
 Scores are joined via a `MAX(scored_at)` subquery so the API always returns the most recent pipeline run's scores.
 
-`GET /mps` accepts: `party`, `state`, `gender`, `is_minister`, `is_speaker`, `is_loa`, `has_criminal_cases`, `has_serious_cases`, `is_convicted`, `is_crorepati` (bools), `terms` (exact term count), `terms_min` (≥, used for the "5+ terms" bucket), `search`, `sort`, `direction`, `page`, `limit`. Integrity filters (`has_*`, `is_convicted`, `is_crorepati`) run against the `_affidavit_aggregate()` subquery (one row per `mp_id`) that's outer-joined into the list query.
+`GET /mps` accepts: `party`, `state`, `gender`, `is_minister`, `is_speaker`, `is_loa`, `has_criminal_cases`, `has_serious_cases`, `is_convicted`, `is_crorepati` (bools), `terms` (exact term count), `terms_min` (≥, used for the "5+ terms" bucket), `has_statements` (MP has any stored statement), `has_flagged` (MP has flagged A/B/C statements), `search`, `sort`, `direction`, `page`, `limit`. Integrity filters (`has_*`, `is_convicted`, `is_crorepati`) run against the `_affidavit_aggregate()` subquery (one row per `mp_id`) that's outer-joined into the list query. Statement filters use `EXISTS` subqueries against `mp_statements`.
 
 ### Derived Scores & Asset Growth (`backend/core/`)
 
@@ -115,6 +149,58 @@ Notable components: `MPCard` (cards on the list page — clean-record bar, integ
 - **`scrollbar-gutter: stable` on `html` + `overflow-x: clip` on `body`** (`index.css`) — reserves the scrollbar's width so the layout doesn't lurch sideways when result height changes toggle the scrollbar on/off. Use `clip` not `hidden` (hidden would make `body` a scroll container and break the sticky navbar).
 - **No `translate` on card hover** — lifting the card moved it out from under the cursor near edges, causing hover/un-hover oscillation. Cards use shadow/border hover only. The `fade-up` keyframe is opacity-only (no `translateY`) so the grid doesn't slide on every filter change.
 - **Tailwind `group` is not auto-scoped:** a tooltip using `group-hover:` fires when ANY ancestor `.group` is hovered. The card root is `.group`, so the `ScoreBar` info-tooltip must use a **named** group (`group/info` + `group-hover/info:`) or every tooltip on the card pops at once.
+
+## Legal Disclaimers & Data Attribution
+
+This section documents every user-facing disclaimer and legal notice in the UI. Keep them in sync when data sources or scoring logic changes.
+
+### Footer (`frontend/src/components/Footer.jsx`)
+
+The site-wide footer renders on every page (wired in `App.jsx` below `<main>`). It is a **slim single-line bar** containing:
+- Left: non-affiliation notice + "For informational use only"
+- Right: attribution links (PRS · ADR/MyNeta · data.gov.in) + **"About & Legal ↗"** button
+
+Clicking "About & Legal" opens `LegalModal` (see below).
+
+### Legal Modal (`frontend/src/components/LegalModal.jsx`)
+
+A full-screen-overlay modal (closes on Escape or backdrop click, locks body scroll) with three tabs:
+
+1. **About** — purpose statement, non-affiliation amber banner, what the site does/doesn't do, limitations, "not legal/financial/political advice" box.
+2. **Data Sources** — four cards (Parliamentary performance / PRS, Criminal & asset declarations / ADR MyNeta, Constituency funds / MPLADS data.gov.in, Public statements / Google News). Each card lists what data is pulled and a caveat note.
+3. **Disclaimers** — six notices colour-coded by risk (red = high, amber = medium, grey = low):
+   - Criminal cases are **pending allegations, not convictions** *(high)*
+   - Asset figures are **self-declared and unaudited** *(high)*
+   - **AI content may contain errors** *(high)*
+   - Scores are **percentile rankings, not ratings** *(medium)*
+   - Data **may be outdated** *(medium)*
+   - **Name matching is imperfect** (fuzzy match for MPLADS/MyNeta) *(low)*
+
+### Inline disclaimers (per-component)
+
+| Component | Location | What it says |
+|-----------|----------|--------------|
+| `CriminalMeter.jsx` | ℹ️ tooltip on "Criminal cases" label | "Pending allegations declared in the candidate's self-sworn affidavit — these are not convictions." |
+| `IntegritySection.jsx` | Below criminal/assets data | Dynamic `disclaimer` field from `/api/v1/integrity/{slug}` (ADR/MyNeta attribution set in the backend route) |
+| `MpladsPanel.jsx` | Below MPLADS chart | "Source: MPLADS / data.gov.in." + low-confidence name-match warning |
+| `StatementMonitor.jsx` | "About this monitor" box | AI methodology, flagging criteria, English-only limitation, "May contain errors" |
+| `StatementCard.jsx` | Each card footer | Publication date · source outlet · "Read full article →" link |
+| `MPProfile.jsx:106` | Below MP header | "Performance data sourced from PRS Legislative Research." |
+| `Home.jsx:139` | Hero paragraph | "Attendance, debates and questions from PRS Legislative Research, combined with self-sworn election affidavits via ADR / MyNeta." |
+
+### Key legal positions
+
+- **Defamation guard:** Every mention of criminal cases is accompanied by the allegation/non-conviction caveat. The `CriminalMeter` tooltip appears on every case display; the footer's Important Notices repeats it globally.
+- **AI liability:** The Statement Monitor's "About" box and the footer both explicitly state AI content may contain errors and that political opinions are never flagged.
+- **Data accuracy:** The footer's "Data may be outdated" notice + MPLADS carry-forward note + AI asset-extraction caveat cover accuracy disclaimers.
+- **Non-commercial / fair use:** Footer bottom bar states informational/civic-education purpose only.
+- **No legal/financial/political advice** disclaimer is in the footer bottom bar on every page.
+
+### If you add a new data source or scoring dimension
+
+1. Add a card to `DATA_SOURCES` in `Footer.jsx`.
+2. Add a note to `LEGAL_NOTES` in `Footer.jsx` if the new data has a misuse risk.
+3. Mirror it as an inline disclaimer in the relevant component (contextual placement is more effective than footer-only).
 
 ## Key Conventions
 

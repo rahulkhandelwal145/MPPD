@@ -20,3 +20,6 @@ tenacity==8.3.0
 loguru==0.7.2
 anthropic>=0.100.0
 groq>=1.0.0
+feedparser==6.0.11
+apscheduler==3.10.4
+googlenewsdecoder==0.1.7

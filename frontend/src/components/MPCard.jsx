@@ -207,6 +207,14 @@ export default function MPCard({ mp }) {
       )}
 
       <IntegrityBadges mp={mp} />
+      {mp.flagged_count > 0 && (
+        <div className="mt-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-200">
+            <span aria-hidden>⚠️</span>
+            {mp.flagged_count} flagged statement{mp.flagged_count > 1 ? "s" : ""}
+          </span>
+        </div>
+      )}
       <AssetTrend mp={mp} />
 
       <div className="mt-4 border-t border-slate-100 pt-4">

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.api.schemas import MPSummary, MPDetail, StatsSummary
 from backend.core.assets import asset_growth, asset_growth_first, asset_series
 from backend.core.scoring import compute_clean_record_score
-from backend.db.models import MPProfile, MPScore, MPRawData, MpAffidavit, MpAssetHistory, MpMplads, PipelineRun
+from backend.db.models import MPProfile, MPScore, MPRawData, MpAffidavit, MpAssetHistory, MpMplads, MpStatement, PipelineRun
 from backend.db.session import get_session
 
 router = APIRouter(prefix="/mps", tags=["mps"])
@@ -80,6 +80,20 @@ def _mplads_aggregate():
     )
 
 
+def _statements_aggregate():
+    """Count of flagged (A/B/C) statements per mp_id."""
+    return (
+        select(
+            MpStatement.mp_id.label("mp_id"),
+            func.count(MpStatement.id).label("flagged_count"),
+        )
+        .where(MpStatement.category_group.in_(["A", "B", "C"]))
+        .where(MpStatement.mp_id.isnot(None))
+        .group_by(MpStatement.mp_id)
+        .subquery()
+    )
+
+
 async def _asset_growth_map(session: AsyncSession, mp_ids: list[int]) -> dict[int, dict]:
     """{mp_id: asset_growth(...)} for the given MPs. One scan of their affidavits
     + asset history, computed in Python (election labels are free-text, so the
@@ -125,7 +139,7 @@ async def _asset_growth_map(session: AsyncSession, mp_ids: list[int]) -> dict[in
 def _summary_from_row(row, growth_map: dict[int, dict] | None = None) -> MPSummary:
     """Build an MPSummary (incl. the derived clean-record and total scores) from
     a list-query row. Shared by the SQL-sorted and Python-sorted code paths."""
-    profile, score, criminal_cases, convictions, convictions_serious, total_assets, serious, mplads_score, mplads_util = row
+    profile, score, criminal_cases, convictions, convictions_serious, total_assets, serious, mplads_score, mplads_util, flagged_count = row
     # Asset growth is only meaningful for returning MPs (a first-time MP has no
     # prior Lok Sabha declaration to compare against).
     growth = (growth_map or {}).get(profile.id) if (profile.terms or 0) > 1 else None
@@ -177,6 +191,7 @@ def _summary_from_row(row, growth_map: dict[int, dict] | None = None) -> MPSumma
         asset_growth_first_pct=growth["first_pct"] if growth else None,
         asset_growth_first_since=growth["first_since"] if growth else None,
         asset_series=growth["series"] if growth else None,
+        flagged_count=flagged_count,
     )
 
 
@@ -195,6 +210,8 @@ async def list_mps(
     is_convicted: Optional[bool] = Query(None),
     is_crorepati: Optional[bool] = Query(None),
     has_mplads: Optional[bool] = Query(None),
+    has_statements: Optional[bool] = Query(None),
+    has_flagged: Optional[bool] = Query(None),
     search: Optional[str] = Query(None),
     sort: Optional[str] = Query(
         None,
@@ -208,16 +225,19 @@ async def list_mps(
     latest_scores = await get_latest_scores(session)
     aff = _affidavit_aggregate()
     mpl = _mplads_aggregate()
+    stmt = _statements_aggregate()
 
     query = (
         select(
             MPProfile, MPScore, aff.c.criminal_cases, aff.c.convictions, aff.c.convictions_serious,
             aff.c.total_assets, aff.c.serious, mpl.c.mplads_score, mpl.c.utilization_pct,
+            stmt.c.flagged_count,
         )
         .join(latest_scores, MPProfile.id == latest_scores.c.mp_id)
         .join(MPScore, and_(MPScore.mp_id == MPProfile.id, MPScore.scored_at == latest_scores.c.max_scored_at))
         .outerjoin(aff, aff.c.mp_id == MPProfile.id)
         .outerjoin(mpl, mpl.c.mp_id == MPProfile.id)
+        .outerjoin(stmt, stmt.c.mp_id == MPProfile.id)
     )
 
     if party is not None:
@@ -248,6 +268,12 @@ async def list_mps(
     # Exclude MPs with no matched MPLADS record (keep only those with a joined row).
     if has_mplads:
         query = query.where(mpl.c.mp_id.isnot(None))
+    if has_statements:
+        stmts_sq = select(MpStatement.mp_id).distinct().subquery()
+        query = query.where(MPProfile.id.in_(select(stmts_sq.c.mp_id)))
+    if has_flagged:
+        flagged_sq = select(MpStatement.mp_id).where(MpStatement.category_group.in_(["A", "B", "C"])).distinct().subquery()
+        query = query.where(MPProfile.id.in_(select(flagged_sq.c.mp_id)))
     if search:
         term = f"%{search}%"
         query = query.where(

@@ -177,3 +177,51 @@ class MpAssetHistory(Base):
     declared_assets: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     affidavit: Mapped["MpAffidavit"] = relationship("MpAffidavit", back_populates="asset_history")
+
+
+# ─── Phase 4 — Public Statement Monitor ────────────────────────────────────────
+# Not managed by Alembic; created on startup via Base.metadata.create_all().
+
+class MpNewsArticle(Base):
+    __tablename__ = "mp_news_articles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mp_id: Mapped[int] = mapped_column(ForeignKey("mp_profiles.id"), nullable=False)
+    # Resolved publisher URL — also the upsert/dedupe key so an article isn't
+    # re-fetched or re-classified across weekly runs.
+    url: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
+    title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    source_domain: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+    article_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    quotes_extracted: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), server_default=text("NOW()"))
+
+    statements: Mapped[list["MpStatement"]] = relationship("MpStatement", back_populates="article")
+
+
+class MpStatement(Base):
+    __tablename__ = "mp_statements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mp_id: Mapped[int] = mapped_column(ForeignKey("mp_profiles.id"), nullable=False)
+    article_id: Mapped[int] = mapped_column(ForeignKey("mp_news_articles.id"), nullable=False)
+
+    # The statement itself — always the exact verbatim quote, never paraphrased.
+    verbatim: Mapped[str] = mapped_column(Text, nullable=False)
+    context: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Classification. Only A/B/C/D rows are ever stored; E is discarded.
+    category: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    category_group: Mapped[str | None] = mapped_column(String(1), nullable=True)
+    constitutional_anchor: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    data_contradicted: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    source_domain: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    article_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+    classified_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), server_default=text("NOW()"))
+
+    article: Mapped["MpNewsArticle"] = relationship("MpNewsArticle", back_populates="statements")

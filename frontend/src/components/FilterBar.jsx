@@ -39,6 +39,8 @@ export default function FilterBar({
   convicted, onConvictedChange,
   crorepati, onCrorepatiChange,
   hasMplads, onHasMpladsChange,
+  hasStatements, onHasStatementsChange,
+  hasFlagged, onHasFlaggedChange,
   onClear,
 }) {
   return (
@@ -99,6 +101,9 @@ export default function FilterBar({
         <ToggleChip label="Convicted" checked={convicted} onChange={onConvictedChange} />
         <ToggleChip label="Crorepati (₹1 Cr+)" checked={crorepati} onChange={onCrorepatiChange} />
         <ToggleChip label="Exclude missing MPLADS" checked={hasMplads} onChange={onHasMpladsChange} />
+        <span className="h-4 w-px bg-slate-200" />
+        <ToggleChip label="Has statements" checked={hasStatements} onChange={onHasStatementsChange} />
+        <ToggleChip label="Has flagged statements" checked={hasFlagged} onChange={onHasFlaggedChange} />
         <button
           type="button"
           onClick={onClear}

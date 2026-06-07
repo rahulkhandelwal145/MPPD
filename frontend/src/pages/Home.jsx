@@ -49,6 +49,8 @@ export default function Home() {
   const [convicted, setConvicted] = useState(saved.convicted ?? false);
   const [crorepati, setCrorepati] = useState(saved.crorepati ?? false);
   const [hasMplads, setHasMplads] = useState(saved.hasMplads ?? false);
+  const [hasStatements, setHasStatements] = useState(saved.hasStatements ?? false);
+  const [hasFlagged, setHasFlagged] = useState(saved.hasFlagged ?? false);
   const [sort, setSort] = useState(saved.sort ?? "");
   const [direction, setDirection] = useState(saved.direction ?? "desc");
   const [page, setPage] = useState(saved.page ?? 1);
@@ -70,9 +72,9 @@ export default function Home() {
     sessionStorage.setItem(FILTERS_KEY, JSON.stringify({
       query, party, stateFilter, gender, role, terms,
       hasCriminalCases, hasSeriousCases, convicted, crorepati, hasMplads,
-      sort, direction, page,
+      hasStatements, hasFlagged, sort, direction, page,
     }));
-  }, [query, party, stateFilter, gender, role, terms, hasCriminalCases, hasSeriousCases, convicted, crorepati, hasMplads, sort, direction, page]);
+  }, [query, party, stateFilter, gender, role, terms, hasCriminalCases, hasSeriousCases, convicted, crorepati, hasMplads, hasStatements, hasFlagged, sort, direction, page]);
 
   useEffect(() => {
     fetchParties().then(setParties).catch(() => {});
@@ -86,7 +88,8 @@ export default function Home() {
   function handleClear() {
     setQuery(""); setParty(""); setStateFilter(""); setGender(""); setRole(""); setTerms("");
     setHasCriminalCases(false); setHasSeriousCases(false); setConvicted(false);
-    setCrorepati(false); setHasMplads(false); setSort(""); setDirection("desc"); setPage(1);
+    setCrorepati(false); setHasMplads(false); setHasStatements(false); setHasFlagged(false);
+    setSort(""); setDirection("desc"); setPage(1);
   }
 
   const { loading, data, error } = useMPs({
@@ -100,11 +103,13 @@ export default function Home() {
     is_convicted: convicted || undefined,
     is_crorepati: crorepati || undefined,
     has_mplads: hasMplads || undefined,
+    has_statements: hasStatements || undefined,
+    has_flagged: hasFlagged || undefined,
     search: debouncedQuery || undefined,
     sort: sort || undefined,
     direction,
     page,
-    limit: 20,
+    limit: 24,
   });
 
   const mps = data?.results ?? [];
@@ -124,15 +129,34 @@ export default function Home() {
         <div className="pointer-events-none absolute -bottom-24 -left-10 h-72 w-72 rounded-full bg-fuchsia-300/20 blur-3xl" />
         <div className="relative">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ring-1 ring-white/20 backdrop-blur">
-            18th Lok Sabha · Performance & Integrity
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+            BeforeYouVote · 18th Lok Sabha
           </p>
           <h1 className="mt-5 max-w-3xl font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl">
-            Know your representatives.
-            <span className="block text-white/80">Performance, assets & criminal records — in one place.</span>
+            Know who you're voting for.
+            <span className="block text-white/80">Before the ballot, not after.</span>
           </h1>
           <p className="mt-4 max-w-2xl text-base text-white/80">
-            Attendance, debates and questions from PRS Legislative Research, combined with self-sworn election affidavits via ADR / MyNeta.
+            Everything that's publicly on record about your MP — in one place, before you vote.
           </p>
+          <ul className="mt-5 flex flex-wrap gap-2">
+            {[
+              { icon: "📅", text: "Attendance" },
+              { icon: "❓", text: "Questions asked" },
+              { icon: "🎙️", text: "Debate participation" },
+              { icon: "📜", text: "Private member bills" },
+              { icon: "⚖️", text: "Criminal cases & convictions" },
+              { icon: "💰", text: "Declared assets & growth" },
+              { icon: "🏗️", text: "Constituency fund usage" },
+              { icon: "📰", text: "Public statements (AI-monitored)" },
+            ].map(({ icon, text }) => (
+              <li key={text} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 ring-1 ring-white/15">
+                <span>{icon}</span>{text}
+              </li>
+            ))}
+          </ul>
           <dl className="mt-8 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
             {heroStats.map((s) => (
               <div key={s.label} className="rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/15 backdrop-blur">
@@ -174,6 +198,10 @@ export default function Home() {
             onCrorepatiChange={onPage1(setCrorepati)}
             hasMplads={hasMplads}
             onHasMpladsChange={onPage1(setHasMplads)}
+            hasStatements={hasStatements}
+            onHasStatementsChange={onPage1(setHasStatements)}
+            hasFlagged={hasFlagged}
+            onHasFlaggedChange={onPage1(setHasFlagged)}
             onClear={handleClear}
           />
       </div>
@@ -220,7 +248,7 @@ export default function Home() {
               <div className="flex items-center gap-2">
                 <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => setPage((prev) => Math.max(prev - 1, 1))} disabled={page === 1}>← Prev</button>
                 <span className="px-1 text-sm font-medium text-slate-500">Page {page}</span>
-                <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => setPage((prev) => prev + 1)} disabled={data && page * 20 >= (data.total ?? 0)}>Next →</button>
+                <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40" onClick={() => setPage((prev) => prev + 1)} disabled={data && page * 24 >= (data.total ?? 0)}>Next →</button>
               </div>
             </div>
           </>

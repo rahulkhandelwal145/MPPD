@@ -15,5 +15,7 @@ export const runPipeline = (payload) => api.post("/pipeline/run", payload).then(
 export const fetchPipelineStatus = (run_id) => api.get(`/pipeline/status/${run_id}`).then((res) => res.data);
 export const fetchIntegrity = (slug) => api.get(`/integrity/${slug}`).then((res) => res.data);
 export const fetchIntegritySummary = () => api.get("/integrity/summary").then((res) => res.data);
+export const fetchStatements = (slug, params) => api.get(`/statements/${slug}`, { params }).then((res) => res.data);
+export const fetchStatementsSummary = () => api.get("/statements/summary").then((res) => res.data);
 
 export default api;

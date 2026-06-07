@@ -14,8 +14,9 @@ class Settings(BaseSettings):
     llm_provider: str = "groq"
     groq_api_key: str | None = None
     groq_model: str = "llama-3.1-8b-instant"
+    groq_classification_model: str = "llama-3.3-70b-versatile"
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "qwen2.5-coder:7b"
+    ollama_model: str = "llama3.1:8b"
 
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).resolve().parent.parent / ".env"),
