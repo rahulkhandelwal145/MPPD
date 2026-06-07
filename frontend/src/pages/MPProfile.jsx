@@ -82,6 +82,9 @@ export default function MPProfile() {
             <div className="flex flex-col items-end gap-2 pb-1">
               <PartySymbol party={data.party} size="h-14 w-14" />
               <PartyTag party={data.party} />
+              {data.party && (
+                <p className="max-w-[180px] text-right text-xs text-slate-400">{data.party}</p>
+              )}
             </div>
           </div>
 

@@ -27,7 +27,6 @@ export default function Navbar() {
         </Link>
         <nav className="flex items-center gap-1">
           <NavLink to="/" className={navClass} end>Home</NavLink>
-          <NavLink to="/leaderboard" className={navClass}>Leaderboard</NavLink>
         </nav>
       </div>
     </header>

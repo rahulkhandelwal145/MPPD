@@ -1,7 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
 import MPProfile from "./pages/MPProfile";
-import LeaderboardPage from "./pages/LeaderboardPage";
 import Navbar from "./components/Navbar";
 import ChatPanel from "./components/ChatPanel";
 import Footer from "./components/Footer";
@@ -14,7 +13,6 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/mp/:slug" element={<MPProfile />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
         </Routes>
       </main>
       <Footer />

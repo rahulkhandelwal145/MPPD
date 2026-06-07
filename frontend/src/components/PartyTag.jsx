@@ -1,5 +1,53 @@
 import { PARTY_SYMBOL_URLS } from "./PartySymbol";
 
+// Short display labels for the pill badge — full names are too wide for cards.
+const PARTY_ABBR = {
+  "Bharatiya Janata Party":                           "BJP",
+  "Indian National Congress":                         "INC",
+  "Samajwadi Party":                                  "SP",
+  "All India Trinamool Congress":                     "AITC",
+  "Dravida Munnetra Kazhagam":                        "DMK",
+  "Telugu Desam Party":                               "TDP",
+  "Janata Dal (United)":                              "JDU",
+  "Janata Dal (Secular)":                             "JDS",
+  "Aam Aadmi Party":                                  "AAP",
+  "Communist Party of India (Marxist)":               "CPI(M)",
+  "Communist Party of India":                         "CPI",
+  "Communist Party of India (Marxist-Leninist) (Liberation)": "CPI(ML)",
+  "Yuvajana Sramika Rythu Congress Party":            "YSRCP",
+  "Shiv Sena":                                        "SS",
+  "Shiv Sena (Uddhav Balasaheb Thackeray)":           "SS(UBT)",
+  "Nationalist Congress Party":                       "NCP",
+  "Nationalist Congress Party Sharadchandra Pawar":   "NCP(SP)",
+  "Rashtriya Janata Dal":                             "RJD",
+  "Rashtriya Lok Dal":                                "RLD",
+  "Rashtriya Loktantrik Party":                       "RLTP",
+  "Shiromani Akali Dal":                              "SAD",
+  "Biju Janata Dal":                                  "BJD",
+  "Bahujan Samaj Party":                              "BSP",
+  "Jharkhand Mukti Morcha":                           "JMM",
+  "Lok Janshakti Party (Ram Vilas)":                  "LJP(RV)",
+  "Jana Sena Party":                                  "JSP",
+  "Jammu and Kashmir National Conference":            "JKNC",
+  "Indian Union Muslim League":                       "IUML",
+  "Marumalarchi Dravida Munnetra Kazhagam":           "MDMK",
+  "Viduthalai Chiruthaigal Katchi":                   "VCK",
+  "Aazad Samaj Party (Kanshi Ram)":                   "ASPKR",
+  "AJSU Party":                                       "AJSU",
+  "All India Majlis-E-Ittehadul Muslimeen":           "AIMIM",
+  "Apna Dal (Soneylal)":                              "AD(S)",
+  "Asom Gana Parishad":                               "AGP",
+  "Bharat Adivasi Party":                             "BAP",
+  "Hindustani Awam Morcha (Secular)":                 "HAM(S)",
+  "Kerala Congress":                                  "KC",
+  "Revolutionary Socialist Party":                    "RSP",
+  "Sikkim Krantikari Morcha":                         "SKM",
+  "United Peoples Party, Liberal":                    "UPPL",
+  "Voice of the People Party":                        "VPP",
+  "Zoram People's Movement":                          "ZPM",
+  "Independent":                                      "IND",
+};
+
 // Keys are the exact full party names stored in the DB.
 const PARTY_COLORS = {
   "Bharatiya Janata Party":                           "bg-amber-50 text-amber-700 ring-amber-200",
@@ -38,9 +86,13 @@ const FALLBACK = "bg-slate-50 text-slate-600 ring-slate-200";
 export default function PartyTag({ party }) {
   const colorCls = (party && PARTY_COLORS[party]) || FALLBACK;
   const symbolUrl = party && PARTY_SYMBOL_URLS[party];
+  const label = (party && PARTY_ABBR[party]) || party || "Unknown";
 
   return (
-    <span className={`inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${colorCls}`}>
+    <span
+      title={party}
+      className={`inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${colorCls}`}
+    >
       {symbolUrl && (
         <img
           src={symbolUrl}
@@ -50,7 +102,7 @@ export default function PartyTag({ party }) {
           onError={(e) => { e.currentTarget.style.display = "none"; }}
         />
       )}
-      {party || "Unknown"}
+      {label}
     </span>
   );
 }
