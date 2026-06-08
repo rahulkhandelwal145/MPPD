@@ -8,6 +8,35 @@ import IntegritySection from "../components/IntegritySection";
 import StatementMonitor from "../components/StatementMonitor";
 import MpladsPanel from "../components/MpladsPanel";
 import useMP from "../hooks/useMP";
+import { useCompare } from "../context/CompareContext";
+
+function CompareProfileBtn({ data }) {
+  const { isSelected, toggleMP, isFull } = useCompare();
+  const sel = isSelected(data.prs_slug);
+  const disabled = isFull && !sel;
+
+  const handle = () => {
+    if (!disabled) {
+      toggleMP({ slug: data.prs_slug, name: data.name, constituency: data.constituency, party: data.party, image_url: data.image_url });
+    }
+  };
+
+  return (
+    <button
+      onClick={handle}
+      disabled={disabled}
+      className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+        sel
+          ? "bg-brand-100 text-brand-700 hover:bg-brand-200"
+          : disabled
+          ? "cursor-not-allowed bg-slate-100 text-slate-300"
+          : "bg-slate-100 text-slate-600 hover:bg-brand-100 hover:text-brand-700"
+      }`}
+    >
+      {sel ? "✓ In compare" : "⊕ Add to compare"}
+    </button>
+  );
+}
 
 const NA_NOTES = {
   Minister: "Ministers represent the government in debates and do not ask questions or sponsor PMBs in this peer comparison.",
@@ -47,12 +76,15 @@ export default function MPProfile() {
 
   return (
     <div className="animate-fade-up space-y-6">
-      <button
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-brand-700"
-      >
-        <span aria-hidden>←</span> Back
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-brand-700"
+        >
+          <span aria-hidden>←</span> Back
+        </button>
+        <CompareProfileBtn data={data} />
+      </div>
 
       {/* Header banner */}
       <div className="overflow-hidden rounded-4xl border border-slate-200/70 bg-white shadow-card">

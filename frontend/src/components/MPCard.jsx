@@ -5,6 +5,7 @@ import ScoreBar from "./ScoreBar";
 import ScoreBadge from "./ScoreBadge";
 import Sparkline from "./Sparkline";
 import { formatINR, formatPctChange } from "../lib/format";
+import { useCompare } from "../context/CompareContext";
 
 const CRORE = 10_000_000;
 
@@ -149,6 +150,37 @@ const CLEAN_RECORD_NOTE =
 const MPLADS_NOTE =
   "MPLADS local-area-development fund score — percentile rank of constituency fund utilisation, works completion and payment efficiency.";
 
+function CompareToggle({ mp }) {
+  const { isSelected, toggleMP, isFull } = useCompare();
+  const sel = isSelected(mp.prs_slug);
+  const disabled = isFull && !sel;
+
+  const handle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) {
+      toggleMP({ slug: mp.prs_slug, name: mp.name, constituency: mp.constituency, party: mp.party, image_url: mp.image_url });
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handle}
+      title={sel ? "Remove from compare" : disabled ? "Max 5 MPs in compare" : "Add to compare"}
+      className={`mt-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors ${
+        sel
+          ? "bg-brand-100 text-brand-700"
+          : disabled
+          ? "cursor-not-allowed bg-slate-100 text-slate-300"
+          : "bg-slate-100 text-slate-500 hover:bg-brand-100 hover:text-brand-700"
+      }`}
+    >
+      {sel ? "✓ Added" : "+ Compare"}
+    </button>
+  );
+}
+
 export default function MPCard({ mp }) {
   const role = getRole(mp);
   const naNote = role ? NA_NOTES[role] : undefined;
@@ -177,7 +209,10 @@ export default function MPCard({ mp }) {
             <p className="mt-0.5 truncate text-sm text-slate-500">{mp.constituency}, {mp.state}</p>
           </div>
         </div>
-        <PartyTag party={mp.party} />
+        <div className="flex flex-col items-end">
+          <PartyTag party={mp.party} />
+          <CompareToggle mp={mp} />
+        </div>
       </div>
 
       {(mp.terms || mp.gender || mp.education) && (

@@ -1871,3 +1871,5 @@
 2026-06-08 00:33:30.155 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
 2026-06-08 00:34:12.203 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
 2026-06-08 00:37:17.354 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
+2026-06-08 13:59:28.965 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
+2026-06-08 13:59:28.967 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
