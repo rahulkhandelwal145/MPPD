@@ -1,0 +1,57 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}
+      MYSQL_DATABASE: mpscorer
+    volumes:
+      - mysql_data:/var/lib/mysql
+    # Expose on 3307 to avoid clashing with a local MySQL on 3306
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      DATAGOV_API_KEY: ${DATAGOV_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
+      # Point Ollama at the host machine if running locally
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      DEBUG: ${DEBUG:-false}
+    volumes:
+      # Mount data/ so the HTML cache and unmatched log persist on the host
+      - ./data:/app/data
+      # Mount logs/ so statement_monitor.log is accessible from the host
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    # Expose 8000 for direct debugging; nginx is the normal entry point
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

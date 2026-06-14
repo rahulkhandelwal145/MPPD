@@ -1873,3 +1873,228 @@
 2026-06-08 00:37:17.354 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
 2026-06-08 13:59:28.965 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
 2026-06-08 13:59:28.967 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
+2026-06-09 01:23:37.904 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
+2026-06-14 10:07:31.252 | INFO     | backend.api.main:_start_scheduler:65 - Weekly news pipeline scheduled (Sun 02:00)
+2026-06-14 10:11:23.475 | INFO     | backend.api.routes.chat:chat:22 - [chat] POST /chat question='Top 5 MPs by attendance'
+2026-06-14 10:11:23.477 | INFO     | backend.agent.chat_agent:run_chat_agent:139 - [chat] ── new request: 'Top 5 MPs by attendance'
+2026-06-14 10:11:23.503 | INFO     | backend.agent.chat_agent:generate_sql_node:31 - [chat] generate_sql | question='Top 5 MPs by attendance' attempt=0
+2026-06-14 10:11:23.505 | ERROR    | backend.agent.chat_agent:generate_sql_node:53 - [chat] Groq API error in generate_sql: GROQ_API_KEY is not set in .env
+2026-06-14 10:11:23.507 | ERROR    | backend.api.routes.chat:chat:30 - [chat] Unhandled error: GROQ_API_KEY is not set in .env
+Traceback (most recent call last):
+
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/__main__.py", line 4, in <module>
+    uvicorn.main()
+    │       └ <Command main>
+    └ <module 'uvicorn' from '/usr/local/lib/python3.11/site-packages/uvicorn/__init__.py'>
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1524, in __call__
+    return self.main(*args, **kwargs)
+           │    │     │       └ {}
+           │    │     └ ()
+           │    └ <function Command.main at 0x71fd5853bce0>
+           └ <Command main>
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1445, in main
+    rv = self.invoke(ctx)
+         │    │      └ <click.core.Context object at 0x71fd5951ced0>
+         │    └ <function Command.invoke at 0x71fd5853b9c0>
+         └ <Command main>
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1308, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           │   │      │    │           │   └ {'host': '0.0.0.0', 'port': 8000, 'workers': 1, 'app': 'backend.api.main:app', 'uds': None, 'fd': None, 'reload': False, 'rel...
+           │   │      │    │           └ <click.core.Context object at 0x71fd5951ced0>
+           │   │      │    └ <function main at 0x71fd5832e700>
+           │   │      └ <Command main>
+           │   └ <function Context.invoke at 0x71fd5853ac00>
+           └ <click.core.Context object at 0x71fd5951ced0>
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 877, in invoke
+    return callback(*args, **kwargs)
+           │         │       └ {'host': '0.0.0.0', 'port': 8000, 'workers': 1, 'app': 'backend.api.main:app', 'uds': None, 'fd': None, 'reload': False, 'rel...
+           │         └ ()
+           └ <function main at 0x71fd5832e700>
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/main.py", line 410, in main
+    run(
+    └ <function run at 0x71fd5855a660>
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/main.py", line 577, in run
+    server.run()
+    │      └ <function Server.run at 0x71fd583afb00>
+    └ <uvicorn.server.Server object at 0x71fd5847a250>
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/server.py", line 65, in run
+    return asyncio.run(self.serve(sockets=sockets))
+           │       │   │    │             └ None
+           │       │   │    └ <function Server.serve at 0x71fd583afba0>
+           │       │   └ <uvicorn.server.Server object at 0x71fd5847a250>
+           │       └ <function run at 0x71fd589153a0>
+           └ <module 'asyncio' from '/usr/local/lib/python3.11/asyncio/__init__.py'>
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           │      │   └ <coroutine object Server.serve at 0x71fd580594e0>
+           │      └ <function Runner.run at 0x71fd58768f40>
+           └ <asyncio.runners.Runner object at 0x71fd580a0150>
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           │    │     │                  └ <Task pending name='Task-1' coro=<Server.serve() running at /usr/local/lib/python3.11/site-packages/uvicorn/server.py:69> wai...
+           │    │     └ <cyfunction Loop.run_until_complete at 0x71fd58313100>
+           │    └ <uvloop.Loop running=True closed=False debug=False>
+           └ <asyncio.runners.Runner object at 0x71fd580a0150>
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 399, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+                   └ <uvicorn.middleware.proxy_headers.ProxyHeadersMiddleware object at 0x71fd580a0a50>
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+                 │    │   │      │        └ <bound method RequestResponseCycle.send of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228c20...
+                 │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+                 │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+                 │    └ <fastapi.applications.FastAPI object at 0x71fd5738aa50>
+                 └ <uvicorn.middleware.proxy_headers.ProxyHeadersMiddleware object at 0x71fd580a0a50>
+  File "/usr/local/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+                           │      │        └ <bound method RequestResponseCycle.send of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228c20...
+                           │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+                           └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+  File "/usr/local/lib/python3.11/site-packages/starlette/applications.py", line 123, in __call__
+    await self.middleware_stack(scope, receive, send)
+          │    │                │      │        └ <bound method RequestResponseCycle.send of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228c20...
+          │    │                │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │    │                └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          │    └ <starlette.middleware.errors.ServerErrorMiddleware object at 0x71fd26af7350>
+          └ <fastapi.applications.FastAPI object at 0x71fd5738aa50>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+          │    │   │      │        └ <function ServerErrorMiddleware.__call__.<locals>._send at 0x71fd2287b600>
+          │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          │    └ <starlette.middleware.cors.CORSMiddleware object at 0x71fd27800cd0>
+          └ <starlette.middleware.errors.ServerErrorMiddleware object at 0x71fd26af7350>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+          │    │               │      │        │                     └ Headers({'host': 'localhost', 'x-real-ip': '172.18.0.1', 'x-forwarded-for': '172.18.0.1', 'content-length': '54', 'sec-ch-ua-...
+          │    │               │      │        └ <function ServerErrorMiddleware.__call__.<locals>._send at 0x71fd2287b600>
+          │    │               │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │    │               └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          │    └ <function CORSMiddleware.simple_response at 0x71fd56ce9f80>
+          └ <starlette.middleware.cors.CORSMiddleware object at 0x71fd27800cd0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 148, in simple_response
+    await self.app(scope, receive, send)
+          │    │   │      │        └ functools.partial(<bound method CORSMiddleware.send of <starlette.middleware.cors.CORSMiddleware object at 0x71fd27800cd0>>, ...
+          │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          │    └ <starlette.middleware.exceptions.ExceptionMiddleware object at 0x71fd29c63d90>
+          └ <starlette.middleware.cors.CORSMiddleware object at 0x71fd27800cd0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 65, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+          │                            │    │    │     │      │        └ functools.partial(<bound method CORSMiddleware.send of <starlette.middleware.cors.CORSMiddleware object at 0x71fd27800cd0>>, ...
+          │                            │    │    │     │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │                            │    │    │     └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          │                            │    │    └ <starlette.requests.Request object at 0x71fd228c0ed0>
+          │                            │    └ <fastapi.routing.APIRouter object at 0x71fd27803190>
+          │                            └ <starlette.middleware.exceptions.ExceptionMiddleware object at 0x71fd29c63d90>
+          └ <function wrap_app_handling_exceptions at 0x71fd56f1aac0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+          │   │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x71fd22b35c60>
+          │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          └ <fastapi.routing.APIRouter object at 0x71fd27803190>
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 756, in __call__
+    await self.middleware_stack(scope, receive, send)
+          │    │                │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x71fd22b35c60>
+          │    │                │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │    │                └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          │    └ <bound method Router.app of <fastapi.routing.APIRouter object at 0x71fd27803190>>
+          └ <fastapi.routing.APIRouter object at 0x71fd27803190>
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 776, in app
+    await route.handle(scope, receive, send)
+          │     │      │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x71fd22b35c60>
+          │     │      │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │     │      └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          │     └ <function Route.handle at 0x71fd56f40180>
+          └ APIRoute(path='/api/v1/chat', name='chat', methods=['POST'])
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+          │    │   │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x71fd22b35c60>
+          │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          │    └ <function request_response.<locals>.app at 0x71fd26b019e0>
+          └ APIRoute(path='/api/v1/chat', name='chat', methods=['POST'])
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+          │                            │    │        │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x71fd22b35c60>
+          │                            │    │        │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │                            │    │        └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          │                            │    └ <starlette.requests.Request object at 0x71fd228c2490>
+          │                            └ <function request_response.<locals>.app.<locals>.app at 0x71fd22b36fc0>
+          └ <function wrap_app_handling_exceptions at 0x71fd56f1aac0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+          │   │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x71fd22b35940>
+          │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x71fd228...
+          │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.3', 8000), 'c...
+          └ <function request_response.<locals>.app.<locals>.app at 0x71fd22b36fc0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 72, in app
+    response = await func(request)
+                     │    └ <starlette.requests.Request object at 0x71fd228c2490>
+                     └ <function get_request_handler.<locals>.app at 0x71fd26b01a80>
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 278, in app
+    raw_response = await run_endpoint_function(
+                         └ <function run_endpoint_function at 0x71fd594eeac0>
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+                 │         │      └ {'body': ChatRequest(question='Top 5 MPs by attendance', show_sql=True)}
+                 │         └ <function chat at 0x71fd26e38c20>
+                 └ <fastapi.dependencies.models.Dependant object at 0x71fd25c2ead0>
+
+> File "/app/backend/api/routes/chat.py", line 24, in chat
+    result = await run_chat_agent(body.question)
+                   │              │    └ 'Top 5 MPs by attendance'
+                   │              └ ChatRequest(question='Top 5 MPs by attendance', show_sql=True)
+                   └ <function run_chat_agent at 0x71fd26e38540>
+
+  File "/app/backend/agent/chat_agent.py", line 148, in run_chat_agent
+    result = await _graph.ainvoke(initial)
+                   │      │       └ {'question': 'Top 5 MPs by attendance', 'sql_query': None, 'sql_result': None, 'answer': None, 'attempts': 0, 'error': None}
+                   │      └ <function Pregel.ainvoke at 0x71fd26de2700>
+                   └ CompiledStateGraph(nodes={'__start__': PregelNode(config={'tags': ['langsmith:hidden']}, channels=['__start__'], triggers=['_...
+
+  File "/usr/local/lib/python3.11/site-packages/langgraph/pregel/__init__.py", line 1610, in ainvoke
+    async for chunk in self.astream(
+              │        │    └ <function Pregel.astream at 0x71fd26de25c0>
+              │        └ CompiledStateGraph(nodes={'__start__': PregelNode(config={'tags': ['langsmith:hidden']}, channels=['__start__'], triggers=['_...
+              └ {'question': 'Top 5 MPs by attendance', 'sql_query': None, 'sql_result': None, 'answer': None, 'attempts': 0, 'error': None}
+  File "/usr/local/lib/python3.11/site-packages/langgraph/pregel/__init__.py", line 1431, in astream
+    _panic_or_proceed(done, inflight, step)
+    │                 │     │         └ 1
+    │                 │     └ set()
+    │                 └ set()
+    └ <function _panic_or_proceed at 0x71fd27068040>
+  File "/usr/local/lib/python3.11/site-packages/langgraph/pregel/__init__.py", line 1643, in _panic_or_proceed
+    raise exc
+          └ ValueError('GROQ_API_KEY is not set in .env')
+  File "/usr/local/lib/python3.11/site-packages/langgraph/pregel/retry.py", line 120, in arun_with_retry
+    await task.proc.ainvoke(task.input, task.config)
+          │    │            │    │      │    └ _tuplegetter(4, 'Alias for field number 4')
+          │    │            │    │      └ PregelExecutableTask(name='generate_sql', input={'question': 'Top 5 MPs by attendance', 'sql_query': None, 'sql_result': None...
+          │    │            │    └ _tuplegetter(1, 'Alias for field number 1')
+          │    │            └ PregelExecutableTask(name='generate_sql', input={'question': 'Top 5 MPs by attendance', 'sql_query': None, 'sql_result': None...
+          │    └ _tuplegetter(2, 'Alias for field number 2')
+          └ PregelExecutableTask(name='generate_sql', input={'question': 'Top 5 MPs by attendance', 'sql_query': None, 'sql_result': None...
+  File "/usr/local/lib/python3.11/site-packages/langchain_core/runnables/base.py", line 2531, in ainvoke
+    input = await step.ainvoke(input, config, **kwargs)
+                  │    │       │      │         └ {}
+                  │    │       │      └ {'tags': [], 'metadata': {'langgraph_step': 1, 'langgraph_node': 'generate_sql', 'langgraph_triggers': ['start:generate_sql']...
+                  │    │       └ {'question': 'Top 5 MPs by attendance', 'sql_query': None, 'sql_result': None, 'answer': None, 'attempts': 0, 'error': None}
+                  │    └ <function RunnableCallable.ainvoke at 0x71fd26dbade0>
+                  └ generate_sql(recurse=True)
+  File "/usr/local/lib/python3.11/site-packages/langgraph/utils.py", line 117, in ainvoke
+    ret = await asyncio.create_task(
+                │       └ <function create_task at 0x71fd58750c20>
+                └ <module 'asyncio' from '/usr/local/lib/python3.11/asyncio/__init__.py'>
+
+  File "/app/backend/agent/chat_agent.py", line 47, in generate_sql_node
+    resp = await _client().chat.completions.create(
+                 └ <function _client at 0x71fd276ea3e0>
+
+  File "/app/backend/agent/chat_agent.py", line 25, in _client
+    raise ValueError("GROQ_API_KEY is not set in .env")
+
+ValueError: GROQ_API_KEY is not set in .env

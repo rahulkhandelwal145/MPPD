@@ -1,0 +1,34 @@
+# Python virtual environments
+.venv/
+.venv311/
+
+# Frontend build artifacts and node_modules (built inside the container)
+frontend/node_modules/
+frontend/dist/
+
+# Python bytecode
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Large data cache (volume-mounted at runtime)
+data/cache/
+
+# Secrets
+backend/.env
+
+# Logs
+logs/
+*.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.claude/
+
+# Test artefacts
+.pytest_cache/
+**/.pytest_cache/

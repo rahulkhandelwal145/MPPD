@@ -1,0 +1,2 @@
+- [Write permission required](feedback_write_permission.md) — Write tool needs explicit approval; present file content inline first
+- [Statement agent test patterns](project_statement_agent_tests.md) — Guard matrix, singleton reset, _DATA_REQUIRED set, mocking strategy for statement_agent.py
