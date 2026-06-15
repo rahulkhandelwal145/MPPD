@@ -5,7 +5,6 @@ import PartyTag from "../components/PartyTag";
 import PartySymbol from "../components/PartySymbol";
 import { getRole } from "../components/MPCard";
 import IntegritySection from "../components/IntegritySection";
-import StatementMonitor from "../components/StatementMonitor";
 import MpladsPanel from "../components/MpladsPanel";
 import useMP from "../hooks/useMP";
 import { useCompare } from "../context/CompareContext";
@@ -140,7 +139,10 @@ export default function MPProfile() {
 
           <IntegritySection slug={slug} />
 
-          <StatementMonitor slug={slug} />
+          <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-5 text-center">
+            <p className="text-sm font-medium text-slate-500">AI Statement Monitor</p>
+            <p className="mt-1 text-xs text-slate-400">Incoming feature — coming soon.</p>
+          </div>
 
           <p className="mt-5 text-xs text-slate-400">Performance data sourced from PRS Legislative Research.</p>
         </div>
