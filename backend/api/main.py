@@ -7,8 +7,9 @@ from backend.api.routes import mps, pipeline
 from backend.api.routes.chat import router as chat_router
 from backend.api.routes.integrity import router as integrity_router
 from backend.api.routes.statements import router as statements_router
+from backend.api.routes.reports import router as reports_router
 from backend.core.config import settings
-from backend.db.models import MpMplads, MpNewsArticle, MpStatement
+from backend.db.models import MpMplads, MpNewsArticle, MpStatement, MpDiscrepancyReport
 from backend.db.session import engine
 from backend.pipeline.news_pipeline import run_all_sync
 
@@ -33,6 +34,7 @@ app.include_router(pipeline.router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(integrity_router, prefix="/api/v1")
 app.include_router(statements_router, prefix="/api/v1")
+app.include_router(reports_router, prefix="/api/v1")
 
 scheduler = BackgroundScheduler()
 
@@ -43,7 +45,7 @@ async def _ensure_unmanaged_tables():
     create them on startup if missing. checkfirst leaves existing tables (incl.
     Alembic-managed Phase 1 ones) untouched."""
     async with engine.begin() as conn:
-        for table in (MpMplads.__table__, MpNewsArticle.__table__, MpStatement.__table__):
+        for table in (MpMplads.__table__, MpNewsArticle.__table__, MpStatement.__table__, MpDiscrepancyReport.__table__):
             await conn.run_sync(
                 lambda sync_conn, t=table: t.create(sync_conn, checkfirst=True)
             )

@@ -225,3 +225,20 @@ class MpStatement(Base):
     classified_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), server_default=text("NOW()"))
 
     article: Mapped["MpNewsArticle"] = relationship("MpNewsArticle", back_populates="statements")
+
+
+# ─── Discrepancy Reports ────────────────────────────────────────────────────
+# Not managed by Alembic; created on startup via Base.metadata.create_all().
+
+class MpDiscrepancyReport(Base):
+    __tablename__ = "mp_discrepancy_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mp_slug: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    mp_id: Mapped[int | None] = mapped_column(ForeignKey("mp_profiles.id"), nullable=True)
+    discrepancy_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    contact_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'new'"))
+    admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), server_default=text("NOW()"))

@@ -17,5 +17,7 @@ export const fetchIntegrity = (slug) => api.get(`/integrity/${slug}`).then((res)
 export const fetchIntegritySummary = () => api.get("/integrity/summary").then((res) => res.data);
 export const fetchStatements = (slug, params) => api.get(`/statements/${slug}`, { params }).then((res) => res.data);
 export const fetchStatementsSummary = () => api.get("/statements/summary").then((res) => res.data);
+export const submitDiscrepancyReport = (slug, payload) => api.post(`/reports/${slug}`, payload).then((res) => res.data);
+export const fetchDiscrepancyReports = (params) => api.get("/reports", { params }).then((res) => res.data);
 
 export default api;

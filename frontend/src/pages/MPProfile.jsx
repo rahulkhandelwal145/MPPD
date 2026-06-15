@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ScoreBar from "../components/ScoreBar";
 import ScoreBadge from "../components/ScoreBadge";
@@ -6,6 +7,7 @@ import PartySymbol from "../components/PartySymbol";
 import { getRole } from "../components/MPCard";
 import IntegritySection from "../components/IntegritySection";
 import MpladsPanel from "../components/MpladsPanel";
+import ReportDiscrepancyModal from "../components/ReportDiscrepancyModal";
 import useMP from "../hooks/useMP";
 import { useCompare } from "../context/CompareContext";
 
@@ -47,6 +49,7 @@ export default function MPProfile() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { loading, data, error } = useMP(slug);
+  const [reportOpen, setReportOpen] = useState(false);
 
   if (loading) {
     return (
@@ -82,8 +85,24 @@ export default function MPProfile() {
         >
           <span aria-hidden>←</span> Back
         </button>
-        <CompareProfileBtn data={data} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setReportOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+          >
+            <span aria-hidden>⚑</span> Report discrepancy
+          </button>
+          <CompareProfileBtn data={data} />
+        </div>
       </div>
+
+      {reportOpen && (
+        <ReportDiscrepancyModal
+          slug={slug}
+          mpName={data.name}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
 
       {/* Header banner */}
       <div className="overflow-hidden rounded-4xl border border-slate-200/70 bg-white shadow-card">
