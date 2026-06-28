@@ -154,6 +154,7 @@ def _summary_from_row(row, growth_map: dict[int, dict] | None = None) -> MPSumma
     metrics = [
         score.attendance_score, score.questions_score,
         score.debates_score, score.pmb_score, clean,
+        mplads_score,
     ]
     present = [m for m in metrics if m is not None]
     total = round(sum(present) / len(present), 1) if present else None

@@ -40,10 +40,9 @@ class MPSummary(BaseModel):
     asset_series: list[dict] | None = None
     # Absolute 0–100 integrity score derived from convictions (see core.scoring)
     clean_record_score: int | None = None
-    # Mean of the MP's available 0–100 metrics (incl. clean_record_score)
+    # Mean of the MP's available 0–100 metrics (incl. clean_record_score + mplads_score)
     total_score: float | None = None
-    # MPLADS local-area-development summary (null when the MP has no matched row).
-    # Kept separate from total_score — it measures fund use, not parliamentary work.
+    # MPLADS constituency fund effectiveness score (0–100 percentile).
     mplads_score: int | None = None
     mplads_utilization_pct: float | None = None
     # Count of flagged (A/B/C) statements from the Statement Monitor (null = none stored).

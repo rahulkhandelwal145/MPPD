@@ -20,6 +20,7 @@ re-ingesting overwrites rows in place rather than duplicating them.
 import asyncio
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from loguru import logger
 from rapidfuzz import fuzz, process
@@ -37,9 +38,10 @@ CSV_PATH = _BACKEND_DIR / "data" / "mplads.csv"
 UNMATCHED_LOG = _PROJECT_ROOT / "data" / "mplads_unmatched.log"
 
 MPLADS_WEIGHTS = {
-    "utilization": 0.40,
-    "completion": 0.40,
-    "payment": 0.20,
+    "mobilization": 0.30,
+    "completion": 0.30,
+    "utilization": 0.25,
+    "payment_eff": 0.15,
 }
 
 
@@ -102,20 +104,6 @@ def match_to_profile(
 
 # ─── Scoring ────────────────────────────────────────────────────────────────────
 
-def mplads_combined_score(
-    util: int | None,
-    completion: int | None,
-    payment: int | None,
-) -> int | None:
-    """Weighted average of the active sub-scores; NULL weight is redistributed."""
-    scores = {"utilization": util, "completion": completion, "payment": payment}
-    active = {k: v for k, v in scores.items() if v is not None}
-    if not active:
-        return None
-    total_weight = sum(MPLADS_WEIGHTS[k] for k in active)
-    weighted_sum = sum(active[k] * MPLADS_WEIGHTS[k] for k in active)
-    return round(weighted_sum / total_weight)
-
 
 def safe_int(val) -> int | None:
     try:
@@ -152,50 +140,84 @@ def canonicalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_scores(df: pd.DataFrame) -> pd.DataFrame:
-    """Adds utilization_score / completion_score / payment_score / mplads_score.
+    """Computes utilization_score / completion_score / payment_score (individual
+    percentile ranks for transparency) and mplads_score (composite effectiveness
+    score: raw weighted ratio → single percentile rank).
 
-    Each sub-score is a percentile rank (0–100) computed *only* over the rows
-    where the metric is defined, so excluded MPs don't dilute the peer pool.
+    mplads_score formula:
+      raw = 0.30 × mobilization  (alloc / p95_alloc, capped at 1)
+          + 0.30 × completion    (Completion Rate % / 100)
+          + 0.25 × utilization   (expenditure / alloc, capped at 1)
+          + 0.15 × payment_eff   (successful / total transactions)
+      Missing sub-scores have their weight redistributed across present ones.
+      mplads_score = percentile rank of raw across all MPs (0–100 integer).
     """
-    # Edge-case masks: rows where a metric is undefined → that sub-score is NULL.
-    allocated_zero = df["Allocated Amount (₹)"].astype(float) == 0
-    no_works = df["Recommended Works"].astype(float) == 0
+    alloc = df["Allocated Amount (₹)"].astype(float)
+    exp = df["Total Expenditure (₹)"].astype(float)
+    total_works = df["Completed Works"].astype(float) + df["Recommended Works"].astype(float)
+
+    allocated_zero = alloc == 0
+    no_works = total_works == 0
     no_transactions = df["Transaction Count"].astype(float) == 0
 
-    # Sub-score 1: utilization (skip MPs with zero allocation — undefined %)
+    # ── Individual percentile sub-scores (stored for transparency) ───────────
     mask_util = ~allocated_zero
     df.loc[mask_util, "utilization_score"] = (
         df.loc[mask_util, "Utilization %"].rank(method="min", pct=True) * 100
     ).round(0).astype(int)
     df.loc[~mask_util, "utilization_score"] = None
 
-    # Sub-score 2: completion (skip MPs with no recommended works)
     mask_comp = ~no_works
     df.loc[mask_comp, "completion_score"] = (
         df.loc[mask_comp, "Completion Rate %"].rank(method="min", pct=True) * 100
     ).round(0).astype(int)
     df.loc[~mask_comp, "completion_score"] = None
 
-    # Sub-score 3: payment efficiency = successful / total transactions
     mask_pay = ~no_transactions
-    df.loc[mask_pay, "payment_efficiency"] = (
-        df.loc[mask_pay, "Successful Payments"]
-        / df.loc[mask_pay, "Transaction Count"] * 100
-    )
+    payment_eff_raw = df.loc[mask_pay, "Successful Payments"] / df.loc[mask_pay, "Transaction Count"]
     df.loc[mask_pay, "payment_score"] = (
-        df.loc[mask_pay, "payment_efficiency"].rank(method="min", pct=True) * 100
+        payment_eff_raw.rank(method="min", pct=True) * 100
     ).round(0).astype(int)
     df.loc[~mask_pay, "payment_score"] = None
 
-    # Combined weighted score
-    df["mplads_score"] = df.apply(
-        lambda r: mplads_combined_score(
-            safe_int(r.get("utilization_score")),
-            safe_int(r.get("completion_score")),
-            safe_int(r.get("payment_score")),
-        ),
-        axis=1,
+    # ── Composite mplads_score ───────────────────────────────────────────────
+    p95_alloc = alloc[~allocated_zero].quantile(0.95)
+
+    mobilization = (alloc / p95_alloc).clip(upper=1.0)
+    mobilization[allocated_zero] = 0.0
+
+    completion_raw = pd.Series(np.nan, index=df.index)
+    completion_raw[~no_works] = df.loc[~no_works, "Completion Rate %"] / 100.0
+
+    utilization_raw = pd.Series(np.nan, index=df.index)
+    utilization_raw[~allocated_zero] = (exp[~allocated_zero] / alloc[~allocated_zero]).clip(upper=1.0)
+
+    payment_raw = pd.Series(np.nan, index=df.index)
+    payment_raw[~no_transactions] = (
+        df.loc[~no_transactions, "Successful Payments"] / df.loc[~no_transactions, "Transaction Count"]
     )
+
+    sub = {
+        "mobilization": mobilization,
+        "completion": completion_raw,
+        "utilization": utilization_raw,
+        "payment_eff": payment_raw,
+    }
+
+    def _composite(i):
+        present = {k: sub[k].iloc[i] for k in MPLADS_WEIGHTS if pd.notna(sub[k].iloc[i])}
+        if not present:
+            return np.nan
+        total_w = sum(MPLADS_WEIGHTS[k] for k in present)
+        return sum(present[k] * MPLADS_WEIGHTS[k] for k in present) / total_w
+
+    mplads_raw = pd.Series([_composite(i) for i in range(len(df))], index=df.index)
+    valid = mplads_raw.notna()
+    df.loc[valid, "mplads_score"] = (
+        mplads_raw[valid].rank(method="min", pct=True) * 100
+    ).round(0).astype(int)
+    df.loc[~valid, "mplads_score"] = None
+
     return df
 
 
