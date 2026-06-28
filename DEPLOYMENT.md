@@ -7,6 +7,32 @@ All deployment uses Docker Compose. The stack is three containers:
 
 ## Prerequisites (one-time, on the server)
 
+### Oracle Linux (8 or 9)
+
+```bash
+# Add the official Docker CE repo (Oracle Linux is RHEL-compatible)
+sudo dnf install -y dnf-utils
+sudo dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+
+# Install Docker Engine + Compose plugin
+sudo dnf install -y docker-ce docker-ce-cli containerd.io \
+    docker-buildx-plugin docker-compose-plugin
+
+# Start Docker and enable it on boot
+sudo systemctl enable --now docker
+
+# Allow your user to run docker without sudo (log out and back in after this)
+sudo usermod -aG docker $USER
+
+# Git
+sudo dnf install -y git
+```
+
+> **Oracle Linux 8 note:** if `dnf config-manager` is missing, install it first:
+> `sudo dnf install -y 'dnf-command(config-manager)'`
+
+### Ubuntu / Debian
+
 ```bash
 # Docker Engine + Compose plugin
 curl -fsSL https://get.docker.com | sh
