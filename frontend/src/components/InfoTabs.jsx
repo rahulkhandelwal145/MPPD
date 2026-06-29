@@ -54,6 +54,7 @@ const SOURCES = [
 ];
 
 const DISCLAIMERS = [
+  { risk: "high",   icon: "🛡️", title: "Limitation of liability — no legal responsibility accepted", body: "This site and its individual operator accept no liability for any direct, indirect, or consequential loss, damage, or legal action arising from use of information here. All data is reproduced in good faith from public-domain sources (ECI affidavits, Parliament records, government open-data portals). This site operates in the public interest under fair dealing provisions of Section 52, Indian Copyright Act 1957. Reproduction of publicly filed documents is a lawful exercise of the right to access information about elected officials in their public capacity." },
   { risk: "high",   icon: "⚖️", title: "Criminal cases are allegations, not convictions",  body: "Declared cases are pending allegations from self-sworn affidavits — not charges, not convictions. Do not infer guilt." },
   { risk: "high",   icon: "📋", title: "Asset figures are self-declared and unaudited",      body: "Asset values come from election affidavits. They are not verified against tax filings or any other record." },
   { risk: "high",   icon: "🤖", title: "AI content may contain errors",                      body: "Statement classifications are produced by an LLM and may be wrong, incomplete, or out of context. Always read the linked source article." },
@@ -118,16 +119,81 @@ function DataPanel({ freshness }) {
   );
 }
 
+const ABOUT_CARDS = [
+  {
+    icon: "🎯",
+    title: "Purpose",
+    items: [
+      "Civic education and research — making scattered public data easier to browse and compare",
+      "Aggregates data already published by government bodies, the Election Commission, and independent research organisations",
+      "Enables citizens to search, filter, and compare MPs' publicly available parliamentary records in one place",
+    ],
+  },
+  {
+    icon: "📊",
+    title: "What this site shows",
+    items: [
+      "Parliamentary participation metrics (attendance, questions, debates, Private Member Bills) from PRS Legislative Research",
+      "Criminal cases and asset declarations from self-sworn election affidavits via ADR / MyNeta",
+      "MPLADS constituency fund utilisation from data.gov.in",
+      "AI-extracted public statements attributed to MPs in major English-language news outlets",
+    ],
+  },
+  {
+    icon: "🚫",
+    title: "What this site does not do",
+    items: [
+      "Does not produce original analysis or make editorial judgements about MPs",
+      "Does not recommend or influence voting choices",
+      "Scores and rankings are mechanical computations on public data — not editorial opinions",
+    ],
+  },
+  {
+    icon: "⚠️",
+    title: "Known limitations",
+    items: [
+      "Parliamentary metrics cover only quantitative participation — not constituency service, committee work, or legislation quality",
+      "Statement Monitor covers approximately 6 of 543 MPs (15-outlet English whitelist; regional press excluded)",
+      "Data reflects the most recent pipeline run and may lag behind the current session",
+    ],
+  },
+  {
+    icon: "✉️",
+    title: "Corrections & contact",
+    items: [
+      "If you spot incorrect data or a mismatched MP profile, contact: rdk14592@gmail.com",
+      "Public figures or their representatives may request factual corrections via the same address",
+      "Operated by an individual developer in a personal, non-commercial capacity",
+    ],
+  },
+];
+
 function AboutPanel() {
   return (
-    <div className="mx-auto max-w-2xl space-y-4 text-sm leading-relaxed text-slate-600">
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
-        <p className="font-bold text-amber-900">Independent, non-commercial research tool</p>
-        <p className="mt-1">Not affiliated with the Parliament of India, the Election Commission, any political party, PRS, ADR, MyNeta, or any government body.</p>
+    <div className="mx-auto max-w-3xl space-y-4">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <p className="text-sm font-bold text-amber-900">Independent, non-commercial research tool</p>
+        <p className="mt-1 text-xs leading-relaxed text-amber-800">
+          Not affiliated with the Parliament of India, the Election Commission, any political party, PRS, ADR, MyNeta, or any government body. Operated by an individual developer in a personal capacity.
+        </p>
       </div>
-      <p>This tool aggregates publicly available data about Members of Parliament in the 18th Lok Sabha into a single searchable interface. All underlying data is sourced from government bodies, the Election Commission, and independent research organisations.</p>
-      <p><span className="font-semibold text-slate-800">Purpose:</span> Civic education and research. To make scattered public data easier to browse and compare.</p>
-      <p><span className="font-semibold text-slate-800">Limitations:</span> Performance metrics cover only quantitative participation. Constituency work, committee participation, and legislation quality are not captured.</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {ABOUT_CARDS.map((card) => (
+          <div key={card.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-bold text-slate-900">
+              <span className="mr-1.5">{card.icon}</span>{card.title}
+            </p>
+            <ul className="mt-3 space-y-1.5">
+              {card.items.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-xs text-slate-500">
+                  <span className="mt-1 h-1 w-1 flex-shrink-0 rounded-full bg-slate-300" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
       <p className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
         For informational use only. Nothing here constitutes legal, financial, or political advice. Always consult primary sources.
       </p>

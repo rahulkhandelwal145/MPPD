@@ -2,6 +2,57 @@ import { useEffect, useState } from "react";
 
 const TABS = ["About", "Data Sources", "Disclaimers"];
 
+const ABOUT_CARDS = [
+  {
+    icon: "🎯",
+    title: "Purpose",
+    items: [
+      "Civic education and research — making scattered public data easier to browse and compare",
+      "Aggregates data already published by government bodies, the Election Commission of India, and independent research organisations",
+      "Enables citizens to search, filter, and compare MPs' publicly available parliamentary records in one place",
+    ],
+  },
+  {
+    icon: "📊",
+    title: "What this site shows",
+    items: [
+      "Parliamentary participation metrics (attendance, questions, debates, Private Member Bills) from PRS Legislative Research",
+      "Criminal cases and asset declarations from self-sworn election affidavits via ADR / MyNeta",
+      "MPLADS constituency fund utilisation from data.gov.in",
+      "AI-extracted public statements attributed to MPs in major English-language news outlets",
+    ],
+  },
+  {
+    icon: "🚫",
+    title: "What this site does not do",
+    items: [
+      "Does not produce original analysis or make editorial judgements about MPs",
+      "Does not recommend or influence voting choices",
+      "Scores and rankings are mechanical computations on public data — not editorial opinions",
+      "Does not independently verify or investigate any data beyond what the primary sources publish",
+    ],
+  },
+  {
+    icon: "⚠️",
+    title: "Known limitations",
+    items: [
+      "Parliamentary metrics cover only quantitative participation — not constituency service, committee work, or legislation quality",
+      "Statement Monitor covers approximately 6 of 543 MPs (15-outlet English whitelist; regional and vernacular press excluded)",
+      "Data reflects the most recent pipeline run and may lag behind the current Lok Sabha session",
+      "Asset figures are AI-extracted from scanned documents and may contain parsing errors",
+    ],
+  },
+  {
+    icon: "✉️",
+    title: "Corrections & contact",
+    items: [
+      "If you spot incorrect data or a mismatched MP profile, contact: rdk14592@gmail.com",
+      "Public figures or their representatives may request factual corrections via the same address",
+      "This site is operated by an individual developer in a personal capacity for non-commercial civic purposes",
+    ],
+  },
+];
+
 const SOURCES = [
   {
     label: "Parliamentary Performance",
@@ -56,6 +107,12 @@ const SOURCES = [
 
 const DISCLAIMERS = [
   {
+    icon: "🛡️",
+    title: "Limitation of liability — no legal responsibility accepted",
+    body: "This site and its individual operator accept no liability whatsoever for any direct, indirect, incidental, or consequential loss, damage, legal action, or other consequence arising from the use of, or reliance on, information published here. All data is reproduced in good faith from sources already in the public domain (Election Commission of India affidavits, Parliament of India records, government open-data portals, and independent research organisations). This site operates solely in the public interest for civic education and falls within fair dealing provisions under Section 52 of the Indian Copyright Act, 1957. Nothing on this site is intended to defame, harass, or harm any individual. Any reproduction of publicly filed documents (affidavits, attendance records) is a lawful exercise of the right to access information about elected public officials in their public capacity.",
+    risk: "high",
+  },
+  {
     icon: "⚖️",
     title: "Criminal cases are allegations, not convictions",
     body: "Criminal case data is reproduced directly from candidates' self-sworn affidavits filed with the Election Commission of India. A declared case represents a pending allegation — it does not mean the MP has been charged, tried, or found guilty. Do not infer guilt or character from case counts. The distinction between pending cases and convictions is shown separately throughout the UI.",
@@ -102,14 +159,12 @@ function riskBadge(risk) {
 export default function LegalModal({ onClose }) {
   const [tab, setTab] = useState(0);
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
@@ -171,42 +226,36 @@ export default function LegalModal({ onClose }) {
 
           {/* ─── About ─── */}
           {tab === 0 && (
-            <div className="space-y-5 text-sm leading-relaxed text-slate-600">
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
-                <p className="font-semibold">Independent, non-commercial research tool</p>
-                <p className="mt-1 text-amber-800 text-xs">
+            <div className="space-y-4">
+              {/* Non-affiliation banner */}
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-900">Independent, non-commercial research tool</p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-800">
                   This site is not affiliated with, endorsed by, or associated with the Parliament of
                   India, the Election Commission of India, any political party, PRS Legislative Research,
-                  ADR, MyNeta, or any government body. It is an independent civic-information project.
+                  ADR, MyNeta, or any government body. It is an independent civic-information project
+                  operated by an individual developer in a personal, non-commercial capacity.
                 </p>
               </div>
 
-              <p>
-                This tool aggregates publicly available data about Members of Parliament in the 18th Lok
-                Sabha into a single searchable interface. All underlying data is sourced from government
-                bodies, the Election Commission of India, and independent research organisations.
-              </p>
+              {ABOUT_CARDS.map((card) => (
+                <div key={card.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-900">
+                    <span className="mr-1.5">{card.icon}</span>{card.title}
+                  </p>
+                  <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+                    {card.items.map((item) => (
+                      <li key={item} className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-400" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
 
-              <p>
-                <span className="font-semibold text-slate-800">Purpose:</span> Civic education and
-                research. To make public data — already available in scattered PDFs and government portals
-                — easier to browse and compare.
-              </p>
-
-              <p>
-                <span className="font-semibold text-slate-800">What this site does not do:</span> It does
-                not produce original analysis, make editorial judgements, or recommend voting choices. Scores
-                and rankings are mechanical computations on publicly available data, not editorial opinions.
-              </p>
-
-              <p>
-                <span className="font-semibold text-slate-800">Limitations:</span> Parliamentary performance
-                data covers only quantitative participation metrics (attendance, questions, debates, private
-                member bills). It does not capture constituency work, committee participation, legislation
-                quality, or any other dimension of an MP's role.
-              </p>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
+              {/* Legal footer notice */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-500">
                 This site is provided for informational and civic-education purposes only. Nothing on this
                 site constitutes legal, financial, or political advice. Data may contain errors. Always
                 consult primary sources before relying on any information shown here.
