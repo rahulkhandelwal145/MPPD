@@ -11,8 +11,8 @@ frontend/dist/
 **/*.pyc
 **/*.pyo
 
-# Large data cache (volume-mounted at runtime)
-data/cache/
+# Data directory is volume-mounted at runtime — never needed in the image
+data/
 
 # Secrets
 backend/.env
