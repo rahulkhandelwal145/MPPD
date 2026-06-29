@@ -10,7 +10,7 @@ export default function useStatements(slug) {
       return;
     }
     setState({ loading: true, data: null, error: null, notFound: false });
-    fetchStatements(slug)
+    fetchStatements(slug, { days: 90 })
       .then((data) => setState({ loading: false, data, error: null, notFound: false }))
       .catch((error) => {
         if (error.response?.status === 404) {
